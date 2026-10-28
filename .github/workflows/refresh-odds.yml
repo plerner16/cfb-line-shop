@@ -1,9 +1,10 @@
 name: Refresh lines
 
 on:
-  # Runs every hour; scripts/refresh-odds.mjs decides whether this hour is a refresh.
+  # Hourly on weekdays, 12:07–23:07 UTC (covers 8am–5pm Central in both CDT and CST, plus a
+  # catch-up hour). scripts/refresh-odds.mjs decides whether a run is one of the refreshes.
   schedule:
-    - cron: "7 * * * *"
+    - cron: "7 12-23 * * 1-5"
   # "Run workflow" button on the Actions tab: refreshes right away.
   workflow_dispatch:
     inputs:
