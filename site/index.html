@@ -87,6 +87,22 @@ a { color: var(--accent); text-underline-offset: 2px; }
 .status[data-state="stale"] { border-color: var(--flag); }
 .status[data-state="stale"] .dot { background: var(--flag); }
 
+/* refresh */
+.mast-side { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.btn.small { padding: 5px 13px; font-size: .84rem; border-radius: 999px; }
+.refresh-msg {
+  margin: 0; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: 4px;
+  background: var(--sheet); font-size: .92rem;
+}
+.refresh-msg.err { border-color: var(--flag); background: var(--flag-soft); }
+.setup { background: var(--sheet); border: 2px solid var(--accent); border-radius: 6px; padding: 16px; display: grid; gap: 10px; }
+.setup h2 { margin: 0; font: 800 1.35rem var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.setup p { margin: 0; max-width: 68ch; }
+.setup ol { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; max-width: 68ch; }
+.key-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.key-row .input { flex: 1 1 220px; }
+.setup .setup-msg { color: var(--flag); font-weight: 600; }
+
 /* controls */
 .label {
   display: block; margin-bottom: 6px; font: 600 .7rem var(--font-data); letter-spacing: .09em;
@@ -272,8 +288,34 @@ table.board { width: 100%; border-collapse: collapse; }
       <h1>CFB Line Shop</h1>
       <p class="sub">FanDuel vs DraftKings &middot; College football &middot; Spread, total, moneyline</p>
     </div>
-    <span class="status" id="status" data-state="loading"><span class="dot"></span><span id="status-text">Loading lines…</span></span>
+    <div class="mast-side">
+      <span class="status" id="status" data-state="loading"><span class="dot"></span><span id="status-text">Loading lines…</span></span>
+      <button type="button" class="btn small" id="refresh-btn">Refresh</button>
+    </div>
   </header>
+
+  <p class="refresh-msg" id="refresh-msg" role="status" hidden></p>
+
+  <section class="setup" id="refresh-setup" hidden aria-labelledby="setup-title">
+    <h2 id="setup-title">Refresh from this device</h2>
+    <p>Refreshes run on GitHub, so this device needs a GitHub token to start one. You only do this once on each device.</p>
+    <ol>
+      <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Make a new token on GitHub</a>. Name it anything, like “Line Shop”, and set the expiration as long as GitHub allows.</li>
+      <li>Under <b>Repository access</b>, choose <b>Only select repositories</b> and pick <b>cfb-line-shop</b>.</li>
+      <li>Under <b>Permissions</b>, add <b>Actions</b> and set it to <b>Read and write</b>.</li>
+      <li>Click <b>Generate token</b>, copy it, and paste it here.</li>
+    </ol>
+    <div>
+      <label class="label" for="gh-token">GitHub token</label>
+      <div class="key-row">
+        <input class="input" id="gh-token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+        <button type="button" class="btn primary" id="save-token">Save and refresh</button>
+      </div>
+    </div>
+    <p class="setup-msg" id="setup-msg" role="alert" hidden></p>
+    <p class="hint">The token is saved only in this browser, and it only has access to this site's GitHub Actions. Without one, you can still <a id="run-on-github" href="https://github.com/plerner16/cfb-line-shop/actions/workflows/refresh-odds.yml" target="_blank" rel="noopener">refresh on GitHub</a> by pressing Run workflow.</p>
+    <div class="row"><button type="button" class="linkish" id="close-setup">Not now</button></div>
+  </section>
 
   <p class="notice" id="data-notice" role="status" hidden></p>
   <p class="notice" id="notice" role="alert" hidden></p>
@@ -340,7 +382,8 @@ table.board { width: 100%; border-collapse: collapse; }
       <dd>The number to the left of each team is the sportsbook rotation number, the same one printed on betting sheets.</dd>
     </dl>
   </details>
-  <p class="fine">Odds from The Odds API. Lines refresh every two hours from 8am to 10pm Central, Thursday through Saturday, and once a day around noon Sunday through Wednesday. An open page picks up each refresh on its own. Lines can trail the sportsbook apps, so confirm the number in the app before you bet.</p>
+  <p class="fine" id="device-access" hidden>This device can refresh the lines. <button type="button" class="linkish" id="forget-token">Remove its GitHub token</button></p>
+  <p class="fine">Odds from The Odds API. Lines refresh at 8am, noon and 5pm Central, Monday through Friday, and whenever you press Refresh. An open page picks up each refresh on its own. Lines can trail the sportsbook apps, so confirm the number in the app before you bet.</p>
 </div>
 
 <script>/* Line-shopping math for FanDuel vs DraftKings. Pure functions, no DOM. */
@@ -755,17 +798,16 @@ table.board { width: 100%; border-collapse: collapse; }
     if (state.source === "loading") setGames(window.LS_SAMPLE(new Date()), "sample");
   }
 
-  var checking = false;
+  var inflight = null;
+  // Resolves once the newest odds.json has been read (or the read failed).
   function checkForLines() {
-    if (checking) return;
-    checking = true;
-    fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })
+    if (inflight) return inflight;
+    inflight = fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
       })
       .then(function (data) {
-        checking = false;
         reachable = true;
         data = data || {};
         state.lastError = data.lastError && data.lastError.message ? data.lastError : null;
@@ -776,11 +818,133 @@ table.board { width: 100%; border-collapse: collapse; }
         setGames(data.events, "live", new Date(data.updatedAt));
       })
       .catch(function () {
-        checking = false;
         reachable = false;
         showSampleIfEmpty();
         renderStatus();
-      });
+      })
+      .then(function () { inflight = null; });
+    return inflight;
+  }
+
+  // ---------- refresh button ----------
+  // Starts the refresh job on GitHub with a token kept only in this browser, then waits for the new lines.
+  var REPO = "plerner16/cfb-line-shop", WORKFLOW = "refresh-odds.yml";
+  var WORKFLOW_API = "https://api.github.com/repos/" + REPO + "/actions/workflows/" + WORKFLOW;
+  var WAIT_MS = 5 * 60 * 1000, WAIT_POLL_MS = 8000;
+  var waiting = null;
+
+  function ghToken() { return (store.get("ls.ghToken") || "").trim(); }
+  function refreshMsg(text, isErr) {
+    var m = $("refresh-msg");
+    m.textContent = text || "";
+    m.className = "refresh-msg" + (isErr ? " err" : "");
+    m.hidden = !text;
+  }
+  function setupMsg(text) { var m = $("setup-msg"); m.textContent = text || ""; m.hidden = !text; }
+  function gh(method, url, token, body) {
+    var headers = { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + token, "X-GitHub-Api-Version": "2022-11-28" };
+    if (body) headers["Content-Type"] = "application/json";
+    return fetch(url, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
+  }
+  function tokenProblem(status) {
+    if (status === 401) return "GitHub didn't accept that token. It may have expired, or part of it didn't get copied.";
+    if (status === 404) return "That token can't see the cfb-line-shop repository. Under Repository access, choose Only select repositories and pick cfb-line-shop.";
+    if (status === 403) return "That token doesn't have permission to start refreshes. Under Permissions, set Actions to Read and write.";
+    return "GitHub answered with error " + status + ". Try again in a minute.";
+  }
+  function renderRefresh() {
+    var btn = $("refresh-btn");
+    btn.disabled = !!waiting;
+    btn.textContent = waiting ? "Refreshing…" : "Refresh";
+    $("device-access").hidden = !ghToken();
+  }
+  function openSetup(reason) {
+    var box = $("refresh-setup");
+    box.hidden = false;
+    setupMsg(reason || "");
+    try { box.scrollIntoView({ block: "nearest" }); } catch (e) { /* older browsers */ }
+    if (!narrow) $("gh-token").focus();
+  }
+  function closeSetup() { $("refresh-setup").hidden = true; setupMsg(""); $("gh-token").value = ""; }
+
+  function stopWaiting() {
+    if (waiting && waiting.timer) clearTimeout(waiting.timer);
+    waiting = null;
+    renderRefresh();
+  }
+  // Watch for the refresh to land: new lines, or a new error from the job.
+  function waitForRefresh(message) {
+    if (waiting && waiting.timer) clearTimeout(waiting.timer);
+    waiting = waiting || { stamp: state.stamp, errAt: state.lastError ? state.lastError.at : null, began: Date.now() };
+    waiting.timer = setTimeout(pollRefresh, WAIT_POLL_MS);
+    renderRefresh();
+    refreshMsg(message);
+  }
+  function pollRefresh() {
+    if (!waiting) return;
+    checkForLines().then(function () {
+      if (!waiting) return;
+      var errAt = state.lastError ? state.lastError.at : null;
+      if (state.stamp !== waiting.stamp) {
+        stopWaiting();
+        refreshMsg("Lines refreshed.");
+        setTimeout(function () { if (!waiting && $("refresh-msg").textContent === "Lines refreshed.") refreshMsg(""); }, 8000);
+        return;
+      }
+      if (errAt && errAt !== waiting.errAt) { stopWaiting(); refreshMsg(""); return; } // the notice above the board explains it
+      if (Date.now() - waiting.began > WAIT_MS) {
+        stopWaiting();
+        refreshMsg("This refresh is taking longer than usual. The page will update on its own when the new lines land.");
+        return;
+      }
+      waiting.timer = setTimeout(pollRefresh, WAIT_POLL_MS);
+    });
+  }
+
+  function startRefresh(token) {
+    if (waiting) return;
+    waiting = { stamp: state.stamp, errAt: state.lastError ? state.lastError.at : null, began: Date.now() };
+    renderRefresh();
+    refreshMsg("Starting a refresh…");
+    gh("POST", WORKFLOW_API + "/dispatches", token, { ref: "main", inputs: { force: true } }).then(function (res) {
+      if (res.ok) { waitForRefresh("Refreshing. New lines usually show up in about a minute."); return; }
+      stopWaiting();
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        refreshMsg("");
+        openSetup(tokenProblem(res.status) + " Then paste the token here again.");
+      } else {
+        refreshMsg(tokenProblem(res.status), true);
+      }
+    }, function () {
+      stopWaiting();
+      refreshMsg("Couldn't reach GitHub. Check your connection and try again.", true);
+    });
+  }
+
+  function onRefreshClick() {
+    var token = ghToken();
+    if (token) startRefresh(token);
+    else openSetup("");
+  }
+
+  function saveToken() {
+    var t = $("gh-token").value.trim();
+    if (!t) { setupMsg("Paste the token first."); return; }
+    var btn = $("save-token");
+    var reset = function () { btn.disabled = false; btn.textContent = "Save and refresh"; };
+    btn.disabled = true;
+    btn.textContent = "Checking…";
+    gh("GET", WORKFLOW_API, t).then(function (res) {
+      reset();
+      if (!res.ok) { setupMsg(tokenProblem(res.status)); return; }
+      store.set("ls.ghToken", t);
+      closeSetup();
+      renderRefresh();
+      startRefresh(t);
+    }, function () {
+      reset();
+      setupMsg("Couldn't reach GitHub. Check your connection and try again.");
+    });
   }
 
   // ---------- my card ----------
@@ -1225,6 +1389,20 @@ table.board { width: 100%; border-collapse: collapse; }
     renderCard(); renderBoard();
   });
 
+  $("refresh-btn").addEventListener("click", onRefreshClick);
+  $("save-token").addEventListener("click", saveToken);
+  $("gh-token").addEventListener("keydown", function (e) { if (e.key === "Enter") saveToken(); });
+  $("close-setup").addEventListener("click", closeSetup);
+  $("run-on-github").addEventListener("click", function () {
+    closeSetup();
+    waitForRefresh("Once you press Run workflow on GitHub, the new lines show up here in about a minute.");
+  });
+  $("forget-token").addEventListener("click", function () {
+    store.set("ls.ghToken", null);
+    renderRefresh();
+    refreshMsg("Removed this device's GitHub token.");
+  });
+
   // Check for newer lines on open, whenever the page comes back into view, and every few minutes while it's showing.
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible") checkForLines();
@@ -1239,6 +1417,7 @@ table.board { width: 100%; border-collapse: collapse; }
   loadLocalCard();
   state.source = "loading";
   render();
+  renderRefresh();
   checkForLines();
 })();
 </script>

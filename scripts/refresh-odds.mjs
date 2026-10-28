@@ -1,25 +1,22 @@
 // Pulls FanDuel and DraftKings college football lines from The Odds API into site/data/odds.json.
 //
-// GitHub runs this every hour. Most runs decide there's nothing to do; the schedule below keeps
-// usage inside the free plan (500 credits a month, 3 credits per refresh):
-//   Thu–Sat: every ~2 hours from 8am to 10pm Central  (8 refreshes a day)
-//   Sun–Wed: once a day, at the first run after noon  (1 refresh a day)
-// That's about 28 refreshes a week, roughly 370 credits a month.
+// GitHub runs this hourly on weekdays. Most runs decide there's nothing to do; refreshes happen at
+//   8am, noon and 5pm Central, Monday through Friday
+// That's 15 refreshes a week at 3 credits each, about 195 of the free plan's 500 credits a month,
+// which leaves room for refreshing by hand.
 //
 // Environment:
 //   ODDS_API_KEY  the key from The Odds API (a repository secret)
-//   FORCE=true    refresh now, whatever the schedule says (manual runs)
+//   FORCE=true    refresh now, whatever the schedule says (the site's Refresh button, Run workflow)
 
 import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export const TZ = "America/Chicago";
 export const SCHEDULE = {
-  gameDays: ["Thu", "Fri", "Sat"],
-  firstHour: 8,       // earliest refresh, local hour
-  lastHour: 22,       // latest refresh, local hour (10pm)
-  gapMinutes: 115,    // game days: two hours apart, with room for GitHub's late starts
-  otherDaysHour: 12   // other days: one refresh, at or after noon
+  days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+  times: ["8:00", "12:00", "17:00"],  // Central time
+  graceMinutes: 30                    // a refresh up to 30 minutes before a slot counts for it
 };
 
 const FEED = "https://api.the-odds-api.com/v4/sports/americanfootball_ncaaf/odds/";
@@ -38,27 +35,33 @@ export function localParts(date) {
   };
 }
 
+function toMinutes(hm) {
+  const [h, m] = hm.split(":").map(Number);
+  return h * 60 + m;
+}
+function label(mins) {
+  const h = Math.floor(mins / 60), m = mins % 60;
+  const h12 = ((h + 11) % 12) + 1;
+  return `${h12}${m ? ":" + String(m).padStart(2, "0") : ""}${h < 12 ? "am" : "pm"}`;
+}
+
 // Should a run at `now` refresh, given when the last good refresh happened?
+// A run refreshes when the latest slot that has started today hasn't been covered yet, so a late
+// or skipped GitHub run is made up by the next one.
 export function decide(now, lastSuccess, schedule = SCHEDULE) {
   const here = localParts(now);
-  if (here.hour < schedule.firstHour || here.hour > schedule.lastHour) {
-    return { go: false, why: `outside ${schedule.firstHour}:00–${schedule.lastHour}:59 Central` };
+  if (!schedule.days.includes(here.weekday)) return { go: false, why: `no refreshes on ${here.weekday}` };
+  const nowMins = here.hour * 60 + here.minute;
+  const started = schedule.times.map(toMinutes).filter((t) => t <= nowMins);
+  if (!started.length) return { go: false, why: "before the first refresh of the day" };
+  const slot = Math.max(...started);
+  const slotStart = now.getTime() - (nowMins - slot) * 60000 - now.getUTCSeconds() * 1000 - now.getUTCMilliseconds();
+  if (!lastSuccess) return { go: true, why: `${label(slot)} refresh (no lines yet)` };
+  const last = new Date(lastSuccess).getTime();
+  if (last >= slotStart - schedule.graceMinutes * 60000) {
+    return { go: false, why: `${label(slot)} refresh already done` };
   }
-  const last = lastSuccess ? new Date(lastSuccess) : null;
-  if (schedule.gameDays.includes(here.weekday)) {
-    if (!last) return { go: true, why: "no lines yet" };
-    const mins = Math.round((now - last) / 60000);
-    return mins >= schedule.gapMinutes
-      ? { go: true, why: `game day, last refresh ${mins} min ago` }
-      : { go: false, why: `game day, last refresh only ${mins} min ago` };
-  }
-  if (here.hour < schedule.otherDaysHour) return { go: false, why: "off day, waiting for noon" };
-  if (!last) return { go: true, why: "no lines yet" };
-  const then = localParts(last);
-  if (then.day === here.day && then.hour >= schedule.otherDaysHour) {
-    return { go: false, why: "off day, already refreshed this afternoon" };
-  }
-  return { go: true, why: "off day, daily refresh" };
+  return { go: true, why: `${label(slot)} refresh` };
 }
 
 function num(v) {
@@ -124,7 +127,9 @@ export async function run({ file, now = new Date(), force = false, key = "" }) {
   let next;
   if (result.error) {
     console.log(`Refresh failed: ${result.error}`);
-    if (prev.lastError && prev.lastError.message === result.error) {
+    // A scheduled run that hits the same problem again leaves the file alone. A manual run always
+    // records it, so the Refresh button on the site hears back.
+    if (!force && prev.lastError && prev.lastError.message === result.error) {
       console.log("Same problem as last time, so the page already says so.");
       return false;
     }
