@@ -1,0 +1,86 @@
+name: Refresh lines
+
+on:
+  # Runs every hour; scripts/refresh-odds.mjs decides whether this hour is a refresh.
+  schedule:
+    - cron: "7 * * * *"
+  # "Run workflow" button on the Actions tab: refreshes right away.
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Refresh now, even outside the schedule (uses 3 credits)"
+        type: boolean
+        default: true
+  # Changes to the page publish it without pulling new lines.
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: refresh-lines
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.decide.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Pull lines if it's time
+        id: fetch
+        if: github.event_name != 'push'
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: node scripts/refresh-odds.mjs
+
+      - name: Save the new lines
+        if: steps.fetch.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data/odds.json
+          git commit -m "Refresh lines" || exit 0
+          for attempt in 1 2 3; do
+            git pull --rebase --quiet origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          echo "Couldn't save the new lines to the repository." && exit 1
+
+      - name: Decide whether to publish
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/configure-pages@v6
+        if: steps.decide.outputs.publish == 'true'
+
+      - uses: actions/upload-pages-artifact@v5
+        if: steps.decide.outputs.publish == 'true'
+        with:
+          path: site
+
+  publish:
+    needs: refresh
+    if: needs.refresh.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
