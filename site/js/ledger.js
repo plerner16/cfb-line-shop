@@ -2,7 +2,7 @@
    Reading and saving both need this device's GitHub token. */
 (function () {
   "use strict";
-  var A = window.APP, L = window.LEDGER, LS = window.LS;
+  var A = window.APP, L = window.LEDGER, LS = window.LS, H = window.LINE_HISTORY;
   var $ = A.$, esc = A.esc;
 
   var CONTENTS = A.LEDGER_API + "/contents/bets.json";
@@ -178,6 +178,75 @@
   }
   function label(b) { return b.pick + (b.teams ? " (" + b.teams + ")" : ""); }
 
+  // ---------- against the closing line ----------
+  var seenFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+  function bookKeyFor(name) {
+    var n = String(name || "").toLowerCase();
+    var list = A.books();
+    for (var i = 0; i < list.length; i++) if (list[i].name.toLowerCase() === n || list[i].key === n) return list[i].key;
+    return null;
+  }
+  // The line a bet is measured against: the close the morning grader saved with it, or, for bets added
+  // from the card, this week's line history (the close once the game kicks off, the line now before that).
+  function lineFor(b, p) {
+    if (b.close && typeof b.close.odds === "number") {
+      return { kind: "close", o: { point: b.close.line == null ? null : b.close.line, price: b.close.odds }, book: b.close.book, t: Date.parse(b.close.at) };
+    }
+    var hist = A.history();
+    var g = H && hist && hist.games && b.eventId ? hist.games[b.eventId] : null;
+    if (!g || !g.lines || b.market !== p.market || (b.side !== "away" && b.side !== "home")) return null;
+    var side = p.market === "total" ? p.side : b.side;
+    var started = Date.parse(g.start) <= Date.now();
+    var get = started ? H.close : H.latest;
+    var key = bookKeyFor(b.book), pick = null;
+    if (key && g.lines[key]) { var o = get(g, key, p.market, side); if (o) pick = { book: key, o: o }; }
+    if (!pick) pick = H.bestOf(p.market, side, Object.keys(g.lines).map(function (k) { return { book: k, o: get(g, k, p.market, side) }; }));
+    return pick ? { kind: started ? "close" : "now", o: pick.o, book: A.bookName(pick.book), t: pick.o.t } : null;
+  }
+  // How a bet's line compares with that line ({ dir, points, cents, kind, line, p }), or null.
+  // Bets placed after kickoff aren't measured: the close doesn't apply to an in-game line.
+  function measured(b) {
+    var p = L.pickLine(b.pick);
+    if (!p || !H || !isFinite(Number(b.odds))) return null;
+    var placed = L.placedInfo(b), lead = L.leadHours(b);
+    if (placed && placed.exact && lead != null && lead < 0) return null;
+    var line = lineFor(b, p);
+    if (!line || (p.market !== "ml" && line.o.point == null)) return null;
+    var c = H.compare(p.market, p.side, { point: p.point, price: Number(b.odds) }, line.o);
+    c.kind = line.kind; c.line = line; c.p = p;
+    return c;
+  }
+  function vsClose(b) { var c = measured(b); return c && c.kind === "close" ? c : null; }
+
+  function lineText(p, o) {
+    if (p.market === "spread") return LS.fmtSpread(o.point) + " " + LS.fmtPrice(o.price);
+    if (p.market === "total") return (p.side === "away" ? "O " : "U ") + LS.fmtNum(o.point) + " " + LS.fmtPrice(o.price);
+    return LS.fmtPrice(o.price);
+  }
+  function gapText(c) {
+    if (c.points) return LS.fmtNum(Math.abs(c.points)) + (Math.abs(c.points) === 1 ? " point" : " points");
+    return Math.abs(c.cents) + "¢";
+  }
+  function closeLineHtml(b) {
+    var c = measured(b);
+    if (!c) return "";
+    var line = c.line, head;
+    if (c.kind === "now") head = "Now " + lineText(c.p, line.o);
+    else {
+      var kick = Date.parse(b.startTime);
+      head = isFinite(kick) && isFinite(line.t) && kick - line.t > 6 * 3600e3
+        ? "Last line seen " + seenFmt.format(new Date(line.t)) + ": " + lineText(c.p, line.o)
+        : "Closed " + lineText(c.p, line.o);
+    }
+    var verdict = c.dir > 0 ? (c.kind === "close" ? "you beat it by " : "yours is better by ") + gapText(c)
+      : c.dir < 0 ? gapText(c) + " better than yours" : "same as yours";
+    var title = c.kind === "close"
+      ? "The last line the site saw before kickoff" + (line.book ? " at " + line.book : "") + ", compared with the line you got."
+      : "The line" + (line.book ? " at " + line.book : "") + " as of the latest refresh, compared with the line you got.";
+    return '<div class="bet-close" title="' + esc(title) + '">' + esc(head + (line.book ? " at " + line.book : "")) + ' · <span class="' +
+      (c.dir > 0 ? "pos" : c.dir < 0 ? "neg" : "") + '">' + esc(verdict) + "</span></div>";
+  }
+
   // ---------- rendering ----------
   function renderTally(list) {
     var s = L.summary(list);
@@ -186,12 +255,18 @@
       "<div><b>" + esc(A.money(s.wagered)) + "</b><span>Wagered</span></div>" +
       '<div class="net' + netCls + '"><b>' + esc(A.money(s.net, true)) + "</b><span>Net</span></div>" +
       "<div><b>" + s.wins + "-" + s.losses + "-" + s.pushes + "</b><span>Record</span></div>" +
-      "<div><b>" + s.pending + "</b><span>Pending</span></div>";
+      "<div><b>" + s.pending + "</b><span>Pending</span></div>" + closeTallyHtml(list);
+  }
+  function closeTallyHtml(list) {
+    var c = L.closeSummary(list, vsClose);
+    if (!c.closed) return "";
+    return '<div title="' + esc(c.beat + " of " + c.closed + " bets got a better number or price than the closing line (" + c.same + " the same, " + c.worse + " worse)") + '"><b>' +
+      Math.round(c.beat / c.closed * 100) + "%</b><span>Beat the close</span></div>";
   }
 
   // Early vs late: how bets did by how long before kickoff they were placed.
   function renderTiming(list) {
-    var t = L.timing(list);
+    var t = L.timing(list, vsClose);
     var rows = t.rows.filter(function (r) { return r.bets > 0 || r.key !== "live"; });
     var known = t.rows.reduce(function (n, r) { return n + r.bets; }, 0);
     if (!known) { $("ledger-timing").hidden = true; return; }
@@ -200,14 +275,17 @@
       var settled = r.wins + r.losses + r.pushes;
       var ret = r.stake > 0 ? r.net / r.stake : null;
       var cls = settled ? (r.net > 0.004 ? "pos" : r.net < -0.004 ? "neg" : "") : "";
-      return "<tr><th scope=\"row\">" + esc(r.label) + (r.pending ? '<span class="sub">' + r.pending + " pending</span>" : "") + "</th><td>" + r.bets + "</td>" +
+      return "<tr><th scope=\"row\">" + esc(r.label) + '<span class="sub">' + r.bets + (r.bets === 1 ? " bet" : " bets") + "</span>" + (r.pending ? '<span class="sub">' + r.pending + " pending</span>" : "") + "</th>" +
         "<td>" + (settled ? r.wins + "-" + r.losses + "-" + r.pushes : "—") + "</td>" +
         '<td class="' + cls + '">' + (settled ? esc(A.money(r.net, true)) : "—") + "</td>" +
-        '<td class="' + cls + '">' + (ret == null ? "—" : (ret > 0 ? "+" : ret < 0 ? "−" : "") + Math.abs(Math.round(ret * 100)) + "%") + "</td></tr>";
+        '<td class="' + cls + '">' + (ret == null ? "—" : (ret > 0 ? "+" : ret < 0 ? "−" : "") + Math.abs(Math.round(ret * 100)) + "%") + "</td>" +
+        "<td" + (r.closed ? ' title="' + r.beat + " of " + r.closed + ' bets beat the closing line"' : "") + ">" +
+        (r.closed ? Math.round(r.beat / r.closed * 100) + '%<span class="sub">' + r.beat + "/" + r.closed + "</span>" : "—") + "</td></tr>";
     }).join("");
-    $("timing-note").textContent = t.unknown
+    $("timing-note").textContent = (t.unknown
       ? t.unknown + (t.unknown === 1 ? " bet has" : " bets have") + " no placed time (logged after the game started), so " + (t.unknown === 1 ? "it's" : "they're") + " left out. Older bets logged before kickoff count from when they were logged; new ones from when you press Add to ledger."
-      : "Bets count from when you pressed Add to ledger or the time you entered.";
+      : "Bets count from when you pressed Add to ledger or the time you entered.") +
+      " Beat close is how often you got a better number or price than the last line before kickoff at the same book; the same line doesn't count.";
   }
 
   function renderBookFilter(list) {
@@ -244,6 +322,7 @@
       ? '<div class="bet-placed"' + (placed.exact ? "" : ' title="When it was logged; no placed time was saved for this bet"') + ">" +
         (placed.exact ? "Placed " : "Logged ") + esc(placedFmt.format(new Date(placed.ms))) + (lead != null ? " · " + esc(L.leadText(lead)) : "") + "</div>"
       : "";
+    placedLine += closeLineHtml(b);
     return '<li class="bet' + (saving ? " saving" : "") + '" data-id="' + esc(b.id) + '">' +
       '<div class="bet-main">' + (b.teams ? '<div class="bet-teams">' + esc(b.teams) + "</div>" : "") +
       '<div class="bet-pick">' + esc(b.pick) + "</div>" +
@@ -498,6 +577,7 @@
     if (A.currentView() === "ledger") load(); else renderStatus();
   });
   A.onBooks(function () { resetNewForm(); });
+  A.onHistory(function () { if (A.currentView() === "ledger" && rendered) render(); });
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible" && A.currentView() === "ledger") load();
   });

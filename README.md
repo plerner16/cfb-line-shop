@@ -43,7 +43,11 @@ The next refresh pulls it, and the board, card and ledger pick it up. Up to 10 b
 
 A GitHub Actions job (`.github/workflows/refresh-odds.yml`) runs every hour. `scripts/refresh-weather.mjs` updates the weather on every run; `scripts/refresh-odds.mjs` decides whether the run is one of the line refreshes and, if so, pulls the lines from The Odds API into `site/data/odds.json`. Then the site republishes. An open page checks for a newer file every few minutes and whenever you come back to it.
 
-Refreshes happen at **8am, noon and 5pm Central, Monday through Friday**. If GitHub starts a run late or skips one, the next run makes it up. That's 15 refreshes a week at 3 credits each, about 195 of the free plan's 500 credits a month, which leaves roughly 100 refreshes a month for refreshing by hand. To change the times, edit `SCHEDULE` at the top of `scripts/refresh-odds.mjs`.
+Refreshes happen at **8am, noon and 5pm Central, Monday through Friday, and 9am, 1pm and 5pm on Saturday** (the last looks before most kickoffs, which make the closing lines). If a run starts late or is skipped, the next run makes it up. That's 18 refreshes a week at 3 credits each, about 235 of the free plan's 500 credits a month (about 280 with the morning score checks), which leaves roughly 70 refreshes a month for refreshing by hand. To change the times, edit `SCHEDULE` at the top of `scripts/refresh-odds.mjs`.
+
+## Line history
+
+Every refresh is also added to `site/data/history.json`: for each game and book, a row each time a line changed (spread, total and moneyline, with prices), stamped with the refresh that first saw it. Lines from after kickoff are never recorded, so the last row before kickoff is the closing line. Games are dropped 10 days after kickoff. On the board, a line that has moved shows where the best line opened, and **Line moves** on a game shows every change at each book. The private ledger's morning job saves each bet's closing line from this file. The history was rebuilt back to October 28 from the saved copies of `odds.json`; before November 21 there were no Saturday refreshes, so Saturday games' closes from then are Friday evening's lines.
 
 Press **Refresh** on the site to refresh right now (3 credits), or go to **Actions → Refresh lines → Run workflow** on GitHub and tick **Refresh the lines now**.
 

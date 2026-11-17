@@ -202,6 +202,23 @@ select.input { padding-right: 6px; }
 }
 .chip.flag { color: var(--flag); border-color: var(--flag); background: var(--flag-soft); }
 .chip.live { color: var(--accent); border-color: var(--accent); }
+.moves-btn { background: transparent; cursor: pointer; color: var(--ink); }
+.moves-btn:hover { background: var(--bg); }
+.moves-btn[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
+
+/* line moves under a game */
+.moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 22px; padding: 10px 14px 12px; border-top: 1px solid var(--rule); }
+.mv-note { grid-column: 1 / -1; margin: 0; font-size: .8rem; color: var(--muted); }
+.mv-mkt h4 { margin: 0 0 4px; font: 600 .66rem var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mv-book { display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; }
+.mv-name { flex: none; width: 2.6em; padding-top: 1px; font: 600 .66rem var(--font-data); letter-spacing: .08em; color: var(--muted); }
+.mv-path { display: flex; flex-wrap: wrap; gap: 4px 0; margin: 0; padding: 0; list-style: none; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.mv-path li { display: grid; padding-right: 8px; }
+.mv-path li + li { padding-left: 16px; position: relative; }
+.mv-path li + li::before { content: "\2192"; position: absolute; left: 0; top: 0; color: var(--muted); font-size: .8rem; }
+.mv-path b { font-weight: 600; font-size: .86rem; }
+.mv-path li:last-child b { color: var(--accent); }
+.mv-path small { font-size: .64rem; color: var(--muted); white-space: nowrap; }
 
 table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .board th, .board td { padding: 8px 10px; border-top: 1px solid var(--rule); text-align: center; vertical-align: middle; }
@@ -217,6 +234,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .pt { font-weight: 600; font-size: .94rem; }
 .pr { margin-left: 7px; font-size: .84rem; color: var(--muted); }
 .who { display: block; margin-top: 2px; font: 600 .62rem var(--font-data); letter-spacing: .1em; color: var(--muted); }
+.was { display: block; margin-top: 1px; font: 400 .66rem var(--font-data); color: var(--muted); }
 .cell.best .num {
   background: linear-gradient(176deg, transparent 6%, var(--hi) 9%, var(--hi) 90%, transparent 94%);
   color: var(--hi-ink);
@@ -319,7 +337,9 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .bet-teams { font-size: .8rem; color: var(--muted); }
 .bet-pick { font-weight: 600; font-size: 1.02rem; overflow-wrap: anywhere; }
 .bet-meta { margin-top: 1px; font: 400 .74rem var(--font-data); color: var(--muted); }
-.bet-placed { margin-top: 1px; font: 400 .72rem var(--font-data); color: var(--muted); }
+.bet-placed, .bet-close { margin-top: 1px; font: 400 .72rem var(--font-data); color: var(--muted); }
+.bet-close .pos { color: var(--accent); }
+.bet-close .neg { color: var(--flag); }
 .timing { padding: 12px 14px; display: grid; gap: 8px; }
 .timing-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .timing-head h2 { margin: 0; font: 800 1.2rem/1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
@@ -330,6 +350,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .timing-table th:first-child { text-align: left; padding-left: 0; }
 .timing-table tbody th { font: 600 .86rem var(--font-body); }
 .timing-table .sub { display: block; font: 400 .7rem var(--font-data); color: var(--muted); }
+.timing-table thead th { white-space: normal; }
 .auto-tag {
   display: inline-block; margin-left: 4px; padding: 0 5px; border: 1px solid var(--rule-strong); border-radius: 3px;
   font: 600 .6rem/1.5 var(--font-data); letter-spacing: .08em; text-transform: uppercase; vertical-align: 1px;
@@ -471,6 +492,8 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
         <dd>Each price is the best line for that bet across your books, with the book under it. A better number wins: Iowa +4½ beats +4, Over 44½ beats Over 45½, and Under 45½ beats Under 44½. When the number is the same, the better price wins. If more than one book has the best line, they're all listed, like FD · DK.</dd>
         <dt>Highlighter</dt>
         <dd>The books disagree on this bet, and this is the better side of that. No highlight means the books have the same line, so it doesn't matter where you bet it. On a computer, hover over a price to see every book's line.</dd>
+        <dt>Opened</dt>
+        <dd>Under a line that has moved: where the best line was when the week's lines first came in. Press Line moves on a game to see every change at each book and when the site saw it. The last line before kickoff is the closing line, which the Ledger tab compares your bets with.</dd>
         <dt>Weather</dt>
         <dd>The forecast at the stadium for kickoff and the next three hours: the temperature, the sky or the highest chance of rain or snow, and the strongest wind. Wind matters most for totals and kicking, so games with 15 mph wind or 25 mph gusts are flagged Windy. Dome means indoors. Hover over the forecast on a computer to see the stadium.</dd>
         <dt>Middle</dt>
@@ -483,7 +506,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
         <dd>The number to the left of each team is the sportsbook rotation number, the same one printed on betting sheets.</dd>
       </dl>
     </details>
-    <p class="fine">Odds from The Odds API. Lines refresh at 8am, noon and 5pm Central, Monday through Friday, and whenever you press Refresh. An open page picks up each refresh on its own. Lines can trail the sportsbook apps, so confirm the number in the app before you bet. You can also <a id="run-on-github" href="https://github.com/plerner16/cfb-line-shop/actions/workflows/refresh-odds.yml" target="_blank" rel="noopener">refresh on GitHub</a>: press Run workflow and tick “Refresh the lines now.” Weather from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, updated every hour.</p>
+    <p class="fine">Odds from The Odds API. Lines refresh at 8am, noon and 5pm Central, Monday through Friday, at 9am, 1pm and 5pm on Saturday, and whenever you press Refresh. An open page picks up each refresh on its own. Lines can trail the sportsbook apps, so confirm the number in the app before you bet. You can also <a id="run-on-github" href="https://github.com/plerner16/cfb-line-shop/actions/workflows/refresh-odds.yml" target="_blank" rel="noopener">refresh on GitHub</a>: press Run workflow and tick “Refresh the lines now.” Weather from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, updated every hour.</p>
   </main>
 
   <!-- ===================== LEDGER ===================== -->
@@ -500,7 +523,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
       </div>
       <div class="timing-scroll">
         <table class="timing-table">
-          <thead><tr><th scope="col">Placed</th><th scope="col">Bets</th><th scope="col">Record</th><th scope="col">Net</th><th scope="col">Return</th></tr></thead>
+          <thead><tr><th scope="col">Placed</th><th scope="col">Record</th><th scope="col">Net</th><th scope="col">Return</th><th scope="col">Beat close</th></tr></thead>
           <tbody id="timing-body"></tbody>
         </table>
       </div>
@@ -526,18 +549,19 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
     <div id="ledger-list"><p class="empty-state">Loading your ledger…</p></div>
 
-    <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both. Pending bets are graded from final scores each morning, Tuesday through Saturday (Saturday's games on Tuesday); bets you mark yourself are never changed. Each bet keeps when you placed it: Add to ledger stamps the time, and you can change it when you log or edit a bet.<span id="ledger-synced"></span></p>
+    <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both. Pending bets are graded from final scores each morning, Tuesday through Saturday (Saturday's games on Tuesday); bets you mark yourself are never changed. Each bet keeps when you placed it: Add to ledger stamps the time, and you can change it when you log or edit a bet. The same morning check saves each bet's closing line, the last line the site saw before kickoff at your book, so you can see whether you beat it.<span id="ledger-synced"></span></p>
   </main>
 
   <p class="fine" id="device-access" hidden>This device is connected to GitHub, so it can refresh lines and save bets. <button type="button" class="linkish" id="forget-token">Disconnect it</button></p>
   <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=8" defer></script>
-<script src="js/sample.js?v=8" defer></script>
-<script src="js/ledger-core.js?v=8" defer></script>
-<script src="js/common.js?v=8" defer></script>
-<script src="js/ledger.js?v=8" defer></script>
-<script src="js/board.js?v=8" defer></script>
+<script src="js/lines.js?v=9" defer></script>
+<script src="js/sample.js?v=9" defer></script>
+<script src="js/history.js?v=9" defer></script>
+<script src="js/ledger-core.js?v=9" defer></script>
+<script src="js/common.js?v=9" defer></script>
+<script src="js/ledger.js?v=9" defer></script>
+<script src="js/board.js?v=9" defer></script>
 </body>
 </html>

@@ -2,7 +2,8 @@ name: Refresh lines
 
 on:
   # Every hour, every day. The weather updates on every run (it's free). Lines only refresh at
-  # 8am, noon and 5pm Central on weekdays (scripts/refresh-odds.mjs), and final scores are checked
+  # 8am, noon and 5pm Central on weekdays and 9am, 1pm and 5pm on Saturday (scripts/refresh-odds.mjs),
+  # each one also added to the line history (site/data/history.json), and final scores are checked
   # once each morning from 5am, Tuesday through Saturday (scripts/refresh-scores.mjs).
   schedule:
     - cron: "7 * * * *"
@@ -67,6 +68,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/data/odds.json site/data/scores.json site/data/weather.json
+          if [ -f site/data/history.json ]; then git add site/data/history.json; fi
           if [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then msg="Refresh lines";
           elif [ "${{ steps.scores.outputs.changed }}" = "true" ]; then msg="Check final scores";
           else msg="Refresh weather"; fi

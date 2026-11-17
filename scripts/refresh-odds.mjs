@@ -1,9 +1,11 @@
-// Pulls FanDuel and DraftKings college football lines from The Odds API into site/data/odds.json.
+// Pulls FanDuel and DraftKings college football lines from The Odds API into site/data/odds.json,
+// and adds them to site/data/history.json (how each line moved through the week).
 //
-// GitHub runs this hourly on weekdays. Most runs decide there's nothing to do; refreshes happen at
+// This runs every hour. Most runs decide there's nothing to do; refreshes happen at
 //   8am, noon and 5pm Central, Monday through Friday
-// That's 15 refreshes a week at 3 credits each, about 195 of the free plan's 500 credits a month,
-// which leaves room for refreshing by hand.
+//   9am, 1pm and 5pm on Saturday, the last looks before most kickoffs (the closing lines)
+// That's 18 refreshes a week at 3 credits each, about 235 of the free plan's 500 credits a month
+// (280 with the morning score checks), which leaves room for refreshing by hand.
 //
 // Environment:
 //   ODDS_API_KEY  the key from The Odds API (a repository secret)
@@ -11,11 +13,16 @@
 
 import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const HISTORY = require("../site/js/history.js");
 
 export const TZ = "America/Chicago";
+const WEEKDAY = ["8:00", "12:00", "17:00"];
 export const SCHEDULE = {
-  days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-  times: ["8:00", "12:00", "17:00"],  // Central time
+  // Central time, by day. Days that aren't listed have no refreshes.
+  times: { Mon: WEEKDAY, Tue: WEEKDAY, Wed: WEEKDAY, Thu: WEEKDAY, Fri: WEEKDAY, Sat: ["9:00", "13:00", "17:00"] },
   graceMinutes: 30                    // a refresh up to 30 minutes before a slot counts for it
 };
 
@@ -67,9 +74,10 @@ function label(mins) {
 // or skipped GitHub run is made up by the next one.
 export function decide(now, lastSuccess, schedule = SCHEDULE) {
   const here = localParts(now);
-  if (!schedule.days.includes(here.weekday)) return { go: false, why: `no refreshes on ${here.weekday}` };
+  const times = schedule.times[here.weekday] || [];
+  if (!times.length) return { go: false, why: `no refreshes on ${here.weekday}` };
   const nowMins = here.hour * 60 + here.minute;
-  const started = schedule.times.map(toMinutes).filter((t) => t <= nowMins);
+  const started = times.map(toMinutes).filter((t) => t <= nowMins);
   if (!started.length) return { go: false, why: "before the first refresh of the day" };
   const slot = Math.max(...started);
   const slotStart = now.getTime() - (nowMins - slot) * 60000 - now.getUTCSeconds() * 1000 - now.getUTCMilliseconds();
@@ -129,7 +137,21 @@ function setOutput(name, value) {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
 }
 
-export async function run({ file, booksFile, now = new Date(), force = false, key = "" }) {
+// Adds a refresh to the line history and drops games long finished. Returns true if the file changed.
+export function recordHistory(historyFile, events, now, books) {
+  let hist;
+  try { hist = HISTORY.parse(readFileSync(historyFile, "utf8")); } catch { hist = HISTORY.empty(); }
+  const before = HISTORY.format(hist);
+  const added = HISTORY.addSnapshot(hist, events, now, books);
+  const dropped = HISTORY.prune(hist, now);
+  console.log(`Line history: ${added} new lines, ${dropped} finished games dropped, ${Object.keys(hist.games).length} games kept.`);
+  const text = HISTORY.format(hist);
+  if (text === before) return false;
+  writeFileSync(historyFile, text);
+  return true;
+}
+
+export async function run({ file, booksFile, historyFile = null, now = new Date(), force = false, key = "" }) {
   let prev = {};
   try { prev = JSON.parse(readFileSync(file, "utf8")) || {}; } catch { prev = {}; }
 
@@ -167,6 +189,7 @@ export async function run({ file, booksFile, now = new Date(), force = false, ke
       books,
       events: result.events
     };
+    if (historyFile) recordHistory(historyFile, result.events, now, books);
   }
   writeFileSync(file, JSON.stringify(next) + "\n");
   return true;
@@ -175,9 +198,11 @@ export async function run({ file, booksFile, now = new Date(), force = false, ke
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const file = fileURLToPath(new URL("../site/data/odds.json", import.meta.url));
   const booksFile = fileURLToPath(new URL("../site/books.json", import.meta.url));
+  const historyFile = fileURLToPath(new URL("../site/data/history.json", import.meta.url));
   const changed = await run({
     file,
     booksFile,
+    historyFile,
     force: process.env.FORCE === "true",
     key: (process.env.ODDS_API_KEY || "").trim()
   });

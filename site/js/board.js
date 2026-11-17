@@ -1,12 +1,13 @@
 /* The Lines tab: the best line for every bet across the books, your card, and the Refresh button. */
 (function () {
   "use strict";
-  var A = window.APP, LS = window.LS, L = window.LEDGER;
+  var A = window.APP, LS = window.LS, L = window.LEDGER, H = window.LINE_HISTORY;
   var $ = A.$, esc = A.esc, store = A.store;
 
   var state = {
     source: "loading", games: [], loadedAt: null, credits: null, lastError: null, stamp: null, events: null,
     weather: null, weatherAt: null, weatherStamp: null,
+    history: null, historyStamp: null, movesOpen: {},
     windowMode: store.get("ls.window") === "all" ? "all" : "week",
     market: "all", sort: "time", onlyDiff: false, q: ""
   };
@@ -88,10 +89,25 @@
       }, function () { /* no weather this time; the board works without it */ });
   }
 
+  // How each line moved this week, added to on every refresh by the same job.
+  var HISTORY_URL = "data/history.json";
+  function checkHistory() {
+    return fetch(HISTORY_URL + "?t=" + Date.now(), { cache: "no-store" })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        if (!data || !data.games || data.updatedAt === state.historyStamp) return;
+        state.historyStamp = data.updatedAt;
+        state.history = data;
+        A.setHistory(data);
+        if (state.source !== "loading") renderBoard();
+      }, function () { /* no history this time; the board works without it */ });
+  }
+
   var inflight = null;
   // Resolves once the newest odds.json has been read (or the read failed).
   function checkForLines() {
     checkWeather();
+    checkHistory();
     if (inflight) return inflight;
     inflight = fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })
       .then(function (res) {
@@ -444,6 +460,25 @@
     return '<span class="pt">' + LS.fmtPrice(o.price) + "</span>";
   }
 
+  // ---------- line moves ----------
+  var moveTime = new Intl.DateTimeFormat(undefined, { weekday: "short", hour: "numeric" });
+  function historyFor(g) {
+    if (state.source !== "live" || !state.history || !H) return null;
+    var h = state.history.games[g.id];
+    return h && h.lines && Object.keys(h.lines).length ? h : null;
+  }
+  function moveValue(market, o) {
+    if (market === "spread") return LS.fmtSpread(o.point);
+    if (market === "total") return LS.fmtNum(o.point);
+    return LS.fmtPrice(o.price);
+  }
+  // The best line when the week opened, if it's a different number now (or a moneyline 10+ cents away).
+  function openedFor(g, market, row, best) {
+    var h = historyFor(g);
+    var open = h && best.o ? H.opened(h, g.bookKeys, market, row) : null;
+    return open && H.moved(market, open.o, best.o) ? open : null;
+  }
+
   // One cell: the best line for this bet, and the book (or books) that have it.
   function cellHtml(g, market, row, best) {
     if (!best.o) return '<td class="cell empty" data-m="' + market + '">—</td>';
@@ -453,11 +488,41 @@
     var cls = "cell" + (better ? " best" : "") + (picked ? " picked" : "");
     var who = best.books.map(A.bookShort).join(" · ");
     var every = best.offers.map(function (x) { return A.bookName(x.book) + " " + LS.fmtLine(market, row, x.o); }).join(" · ");
-    var title = every + ". " + (picked ? "Tap to take it off your card." : "Tap to add it to your card.");
+    var open = openedFor(g, market, row, best);
+    var title = every + ". " + (open ? "The best line opened at " + LS.fmtLine(market, row, open.o) + " (" + A.bookName(open.book) + ", " + moveTime.format(new Date(open.o.t)) + "). " : "") +
+      (picked ? "Tap to take it off your card." : "Tap to add it to your card.");
     return '<td class="' + cls + '" data-m="' + market + '"><button type="button" class="pick-btn" data-key="' + esc(key) +
       '" data-game="' + esc(g.id) + '" data-market="' + market + '" data-row="' + row +
       '" aria-pressed="' + picked + '" title="' + esc(title) + '"><span class="num">' + lineLabel(market, row, best.o) + "</span>" +
-      '<span class="who">' + esc(who) + "</span></button></td>";
+      '<span class="who">' + esc(who) + "</span>" +
+      (open ? '<span class="was">opened ' + esc(moveValue(market, open.o)) + "</span>" : "") + "</button></td>";
+  }
+
+  // Under the game: every change at each book, at the refresh that first saw it.
+  function thinPath(market, list) {
+    if (market !== "ml" || list.length < 3) return list;
+    var out = [list[0]];
+    for (var i = 1; i < list.length - 1; i++) if (LS.centsGap(list[i].price, out[out.length - 1].price) >= 5) out.push(list[i]);
+    out.push(list[list.length - 1]);
+    return out;
+  }
+  function movesHtml(g, h) {
+    var keys = g.bookKeys.filter(function (k) { return h.lines[k] && h.lines[k].length; });
+    var first = Math.min.apply(null, keys.map(function (k) { return h.lines[k][0][0] * 1000; }));
+    var sets = [["spread", "Spread · " + LS.shortTeam(g.away)], ["total", "Total"], ["ml", "Moneyline · " + LS.shortTeam(g.away)]];
+    var body = sets.map(function (s) {
+      var m = s[0];
+      var books = keys.map(function (k) {
+        var p = thinPath(m, H.path(h, k, m, "away"));
+        if (!p.length) return "";
+        return '<div class="mv-book"><span class="mv-name">' + esc(A.bookShort(k)) + '</span><ol class="mv-path">' + p.map(function (c) {
+          return "<li><b>" + esc(moveValue(m, c)) + "</b><small>" + esc(moveTime.format(new Date(c.t))) + "</small></li>";
+        }).join("") + "</ol></div>";
+      }).join("");
+      return books ? '<div class="mv-mkt" data-m="' + m + '"><h4>' + esc(s[1]) + "</h4>" + books + "</div>" : "";
+    }).join("");
+    return '<div class="moves"><p class="mv-note">Every change at each book since ' + esc(moveTime.format(new Date(first))) +
+      ", as of each refresh." + (g.live ? "" : " The last one before kickoff is the closing line.") + "</p>" + body + "</div>";
   }
 
   function sideLabel(g, market, row, o) {
@@ -533,6 +598,11 @@
     if (mids) chips.push('<span class="chip flag">Middle</span>');
     if (isWindy(weatherFor(g))) chips.push('<span class="chip flag">Windy</span>');
 
+    var hist = historyFor(g), open = hist && !!state.movesOpen[g.id];
+    if (hist) {
+      chips.push('<button type="button" class="chip moves-btn" data-game="' + esc(g.id) + '" aria-expanded="' + open + '">' +
+        (open ? "Hide moves" : "Line moves") + "</button>");
+    }
     var kick = (showDay ? shortDay.format(g.start) + " " : "") + timeFmt.format(g.start);
     var head = '<div class="game-head"><span class="kick">' + esc(kick) + "</span>" + weatherHtml(g) +
       '<span class="chips">' + chips.join("") + "</span></div>";
@@ -549,7 +619,8 @@
       return '<tr><th scope="row" class="team"><span class="rot">' + (rot == null ? "" : esc(rot)) + "</span>" +
         name + (r === "home" ? ' <span class="home-tag">home</span>' : "") + "</th>" + cells + "</tr>";
     }).join("");
-    return '<article class="game">' + head + '<table class="board">' + thead + "<tbody>" + rows + "</tbody></table>" + notesHtml(item) + "</article>";
+    return '<article class="game">' + head + '<table class="board">' + thead + "<tbody>" + rows + "</tbody></table>" +
+      (open ? movesHtml(g, hist) : "") + notesHtml(item) + "</article>";
   }
 
   function renderStatus() {
@@ -660,6 +731,15 @@
   $("team-search").addEventListener("input", function (e) { state.q = e.target.value.trim(); renderBoard(); });
 
   $("board").addEventListener("click", function (e) {
+    var mv = e.target.closest(".moves-btn");
+    if (mv) {
+      var id = mv.dataset.game;
+      state.movesOpen[id] = !state.movesOpen[id];
+      renderBoard();
+      var again = $("board").querySelector('.moves-btn[data-game="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+      if (again) again.focus();
+      return;
+    }
     var b = e.target.closest(".pick-btn");
     if (b) togglePick(b);
   });

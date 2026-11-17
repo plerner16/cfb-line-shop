@@ -137,9 +137,11 @@
     return null;
   }
   // Record, net and return for each timing group. Pending bets are counted but not scored.
-  function timing(bets) {
+  // `vsClose(bet)`, when given, says how the bet compared with the closing line ({ dir } or null);
+  // each group then also counts the bets that beat it.
+  function timing(bets, vsClose) {
     var rows = TIMING.map(function (t) {
-      return { key: t.key, label: t.label, bets: 0, wins: 0, losses: 0, pushes: 0, pending: 0, net: 0, stake: 0 };
+      return { key: t.key, label: t.label, bets: 0, wins: 0, losses: 0, pushes: 0, pending: 0, net: 0, stake: 0, closed: 0, beat: 0 };
     });
     var unknown = 0;
     bets.forEach(function (b) {
@@ -147,6 +149,8 @@
       if (!key) { unknown++; return; }
       var r = rows.filter(function (x) { return x.key === key; })[0];
       r.bets++;
+      var c = vsClose ? vsClose(b) : null;
+      if (c) { r.closed++; if (c.dir > 0) r.beat++; }
       if (b.result === "win") r.wins++;
       else if (b.result === "loss") r.losses++;
       else if (b.result === "push") r.pushes++;
@@ -156,6 +160,32 @@
     });
     return { rows: rows, unknown: unknown };
   }
+  // How often bets beat the closing line: { closed, beat, same, worse }.
+  function closeSummary(bets, vsClose) {
+    var s = { closed: 0, beat: 0, same: 0, worse: 0 };
+    bets.forEach(function (b) {
+      var c = vsClose(b);
+      if (!c) return;
+      s.closed++;
+      if (c.dir > 0) s.beat++; else if (c.dir < 0) s.worse++; else s.same++;
+    });
+    return s;
+  }
+
+  // ---------- reading a pick ----------
+  // "Iowa +4.5", "Utah PK", "Utah ML", "Over 45.5", "u 52" (the same picks the morning grader reads).
+  // side follows the board: a total's Over is "away", its Under "home"; spreads and moneylines don't need it.
+  function pickLine(pick) {
+    var s = String(pick || "").trim().replace(/−/g, "-").replace(/½/g, ".5");
+    var m = s.match(/^(over|under|o|u)\s*(\d+(?:\.\d+)?)$/i);
+    if (m) return { market: "total", side: /^o/i.test(m[1]) ? "away" : "home", point: Number(m[2]) };
+    m = s.match(/^(.+?)\s+(?:ml|moneyline)$/i);
+    if (m) return { market: "ml", side: "away", team: m[1], point: null };
+    m = s.match(/^(.+?)\s+(pk|pick|pick'?em|[+-]\d+(?:\.\d+)?)$/i);
+    if (m) return { market: "spread", side: "away", team: m[1], point: /^[+-]/.test(m[2]) ? Number(m[2]) : 0 };
+    return null;
+  }
+
   function leadText(hours) {
     if (hours == null) return "";
     if (hours < 0) return "after kickoff";
@@ -183,7 +213,8 @@
     applyChange: applyChange, profitFor: profitFor, summary: summary,
     normWeek: normWeek, weekSortKey: weekSortKey, displayWeek: displayWeek,
     parseOdds: parseOdds, parseAmount: parseAmount,
-    placedInfo: placedInfo, leadHours: leadHours, timing: timing, timingKey: timingKey, leadText: leadText, TIMING: TIMING
+    placedInfo: placedInfo, leadHours: leadHours, timing: timing, timingKey: timingKey, leadText: leadText, TIMING: TIMING,
+    closeSummary: closeSummary, pickLine: pickLine
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.LEDGER = api;
