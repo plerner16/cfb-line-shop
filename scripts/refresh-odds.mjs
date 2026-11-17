@@ -21,6 +21,23 @@ export const SCHEDULE = {
 
 const FEED = "https://api.the-odds-api.com/v4/sports/americanfootball_ncaaf/odds/";
 
+// The books come from site/books.json, so adding one is a one-line change there. Up to 10 books cost
+// the same as two (The Odds API counts each group of 10 bookmakers as one region).
+export const DEFAULT_BOOKS = [
+  { key: "fanduel", name: "FanDuel", short: "FD" },
+  { key: "draftkings", name: "DraftKings", short: "DK" }
+];
+export function loadBooks(path) {
+  try {
+    const list = JSON.parse(readFileSync(path, "utf8"));
+    const books = (Array.isArray(list) ? list : []).filter((b) => b && typeof b.key === "string" && b.key.trim())
+      .map((b) => ({ key: b.key.trim(), name: String(b.name || b.key).trim(), short: String(b.short || b.name || b.key).trim() }));
+    return books.length ? books : DEFAULT_BOOKS;
+  } catch {
+    return DEFAULT_BOOKS;
+  }
+}
+
 export function localParts(date) {
   const parts = {};
   new Intl.DateTimeFormat("en-US", {
@@ -79,11 +96,11 @@ export function explain(status, body) {
   return `The Odds API answered with ${msg || `error ${status}`}. The next scheduled run will try again.`;
 }
 
-async function fetchOdds(key) {
+async function fetchOdds(key, books) {
   const url = new URL(FEED);
   url.search = new URLSearchParams({
     apiKey: key,
-    bookmakers: "fanduel,draftkings",
+    bookmakers: books.map((b) => b.key).join(","),
     markets: "h2h,spreads,totals",
     oddsFormat: "american",
     dateFormat: "iso",
@@ -112,7 +129,7 @@ function setOutput(name, value) {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
 }
 
-export async function run({ file, now = new Date(), force = false, key = "" }) {
+export async function run({ file, booksFile, now = new Date(), force = false, key = "" }) {
   let prev = {};
   try { prev = JSON.parse(readFileSync(file, "utf8")) || {}; } catch { prev = {}; }
 
@@ -120,7 +137,8 @@ export async function run({ file, now = new Date(), force = false, key = "" }) {
   console.log(`${plan.go ? "Refreshing" : "Skipping"}: ${plan.why}`);
   if (!plan.go) return false;
 
-  const result = key ? await fetchOdds(key) : {
+  const books = loadBooks(booksFile);
+  const result = key ? await fetchOdds(key, books) : {
     error: "There's no Odds API key yet. Add it on GitHub as a repository secret named ODDS_API_KEY."
   };
 
@@ -137,6 +155,7 @@ export async function run({ file, now = new Date(), force = false, key = "" }) {
       updatedAt: prev.updatedAt || null,
       creditsRemaining: prev.creditsRemaining ?? null,
       lastError: { at: now.toISOString(), message: result.error },
+      books: Array.isArray(prev.books) ? prev.books : books,
       events: Array.isArray(prev.events) ? prev.events : []
     };
   } else {
@@ -145,6 +164,7 @@ export async function run({ file, now = new Date(), force = false, key = "" }) {
       updatedAt: now.toISOString(),
       creditsRemaining: result.remaining,
       lastError: null,
+      books,
       events: result.events
     };
   }
@@ -154,8 +174,10 @@ export async function run({ file, now = new Date(), force = false, key = "" }) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const file = fileURLToPath(new URL("../site/data/odds.json", import.meta.url));
+  const booksFile = fileURLToPath(new URL("../site/books.json", import.meta.url));
   const changed = await run({
     file,
+    booksFile,
     force: process.env.FORCE === "true",
     key: (process.env.ODDS_API_KEY || "").trim()
   });

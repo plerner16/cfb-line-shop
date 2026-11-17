@@ -12,9 +12,12 @@ on:
         description: "Refresh now, even outside the schedule (uses 3 credits)"
         type: boolean
         default: true
-  # Changes to the page publish it without pulling new lines.
+  # Changes to the page publish it without pulling new lines. Ledger saves from the site don't touch
+  # the page, so they don't trigger a publish.
   push:
     branches: [main]
+    paths-ignore:
+      - "ledger/**"
 
 permissions:
   contents: write
