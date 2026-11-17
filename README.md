@@ -16,6 +16,13 @@ Each bet shows one line: the best one across your books, with the book under it 
 
 Tap a price to put it on your card. After you bet it, fix the book, odds or stake if they changed and press **Add to ledger**.
 
+## Weather
+
+Each game shows the forecast at the stadium for kickoff and the next three hours: temperature, sky or the chance of rain or snow, and the strongest wind. Games with 15 mph wind or 25 mph gusts are flagged Windy; indoor stadiums say Dome. The forecast comes from [Open-Meteo](https://open-meteo.com/) (free, no key, no Odds API credits) and updates every hour, every day.
+
+- `scripts/stadiums.json` places each team's home games (stadium, city, coordinates, roof). A team that's missing shows no weather, and the hourly job's log names it.
+- `scripts/neutral-sites.json` lists games played somewhere else (bowls, conference championships, Army–Navy), matched on both teams and a date range.
+
 ## Adding a book
 
 The books live in `site/books.json`. Add a line with The Odds API's key for the book, for example:
@@ -28,7 +35,7 @@ The next refresh pulls it, and the board, card and ledger pick it up. Up to 10 b
 
 ## How the lines stay up to date
 
-A GitHub Actions job (`.github/workflows/refresh-odds.yml`) runs hourly on weekdays. `scripts/refresh-odds.mjs` decides whether that run is one of the refreshes, pulls the lines from The Odds API into `site/data/odds.json`, and republishes the site. An open page checks for a newer file every few minutes and whenever you come back to it.
+A GitHub Actions job (`.github/workflows/refresh-odds.yml`) runs every hour. `scripts/refresh-weather.mjs` updates the weather on every run; `scripts/refresh-odds.mjs` decides whether the run is one of the line refreshes and, if so, pulls the lines from The Odds API into `site/data/odds.json`. Then the site republishes. An open page checks for a newer file every few minutes and whenever you come back to it.
 
 Refreshes happen at **8am, noon and 5pm Central, Monday through Friday**. If GitHub starts a run late or skips one, the next run makes it up. That's 15 refreshes a week at 3 credits each, about 195 of the free plan's 500 credits a month, which leaves roughly 100 refreshes a month for refreshing by hand. To change the times, edit `SCHEDULE` at the top of `scripts/refresh-odds.mjs`.
 

@@ -6,6 +6,7 @@
 
   var state = {
     source: "loading", games: [], loadedAt: null, credits: null, lastError: null, stamp: null, events: null,
+    weather: null, weatherAt: null, weatherStamp: null,
     windowMode: store.get("ls.window") === "all" ? "all" : "week",
     market: "all", sort: "time", onlyDiff: false, q: ""
   };
@@ -73,9 +74,24 @@
     if (state.source === "loading") setGames(window.LS_SAMPLE(new Date()), "sample");
   }
 
+  // Kickoff forecasts, refreshed every hour by the same GitHub job.
+  var WEATHER_URL = "data/weather.json";
+  function checkWeather() {
+    return fetch(WEATHER_URL + "?t=" + Date.now(), { cache: "no-store" })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        if (!data || !data.games || !data.updatedAt || data.updatedAt === state.weatherStamp) return;
+        state.weatherStamp = data.updatedAt;
+        state.weather = data.games;
+        state.weatherAt = new Date(data.updatedAt);
+        if (state.source !== "loading") renderBoard();
+      }, function () { /* no weather this time; the board works without it */ });
+  }
+
   var inflight = null;
   // Resolves once the newest odds.json has been read (or the read failed).
   function checkForLines() {
+    checkWeather();
     if (inflight) return inflight;
     inflight = fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" })
       .then(function (res) {
@@ -475,6 +491,32 @@
     return out.length ? '<div class="notes">' + out.join("") + "</div>" : "";
   }
 
+  // ---------- weather ----------
+  var SKY = { clear: "Clear", partly: "Partly cloudy", cloudy: "Cloudy", fog: "Fog", drizzle: "Drizzle", rain: "Rain", snow: "Snow", storm: "Storms" };
+  var WINDY = { wind: 15, gust: 25 };
+  function weatherFor(g) {
+    if (state.source !== "live" || !state.weather || g.live) return null;
+    return state.weather[g.id] || null;
+  }
+  function isWindy(w) { return !!w && w.temp != null && ((w.wind || 0) >= WINDY.wind || (w.gust || 0) >= WINDY.gust); }
+  function weatherText(w) {
+    if (w.roof === "dome") return "Dome";
+    if (w.roof === "retractable") return "Retractable roof";
+    if (w.later || w.temp == null) return "Forecast closer to kickoff";
+    var parts = [w.temp + "°"];
+    if (w.precip != null && w.precip >= 20) parts.push((w.sky === "storm" ? "Storms" : w.snow ? "Snow" : "Rain") + " " + w.precip + "%");
+    else if (w.sky && SKY[w.sky]) parts.push(SKY[w.sky]);
+    if (w.wind != null) parts.push("Wind " + w.wind + " mph" + (w.gust != null && w.gust >= w.wind + 8 ? ", gusts " + w.gust : ""));
+    return parts.join(" · ");
+  }
+  function weatherHtml(g) {
+    var w = weatherFor(g);
+    if (!w) return "";
+    var where = [w.venue, w.city].filter(Boolean).join(", ") + (w.neutral ? " (neutral site)" : "");
+    var title = where + (w.temp != null ? ". Forecast for kickoff and the next three hours, updated " + whenText(state.weatherAt) + "." : ".");
+    return '<span class="wx' + (isWindy(w) ? " windy" : "") + '" title="' + esc(title) + '">' + esc(weatherText(w)) + "</span>";
+  }
+
   function gameHtml(item, showDay) {
     var g = item.g, a = item.a, chips = [];
     if (state.source === "sample") chips.push('<span class="chip">Sample</span>');
@@ -483,9 +525,11 @@
     var mids = a.opps.filter(function (o) { return o.type === "middle"; }).length;
     if (a.opps.length - mids) chips.push('<span class="chip flag">Arb</span>');
     if (mids) chips.push('<span class="chip flag">Middle</span>');
+    if (isWindy(weatherFor(g))) chips.push('<span class="chip flag">Windy</span>');
 
     var kick = (showDay ? shortDay.format(g.start) + " " : "") + timeFmt.format(g.start);
-    var head = '<div class="game-head"><span class="kick">' + esc(kick) + "</span>" + '<span class="chips">' + chips.join("") + "</span></div>";
+    var head = '<div class="game-head"><span class="kick">' + esc(kick) + "</span>" + weatherHtml(g) +
+      '<span class="chips">' + chips.join("") + "</span></div>";
     var thead = '<thead><tr><th class="team-h"><span class="th-label">Rot &middot; Team</span></th>' +
       ["spread", "total", "ml"].map(function (m) { return '<th data-m="' + m + '">' + MARKET_NAME[m] + "</th>"; }).join("") + "</tr></thead>";
     var rows = ["away", "home"].map(function (r) {

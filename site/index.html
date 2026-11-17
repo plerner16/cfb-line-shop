@@ -194,6 +194,8 @@ select.input { padding-right: 6px; }
 .game-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 14px 6px; }
 .kick { font: 600 .82rem var(--font-data); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.wx { font: 500 .78rem var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.wx.windy { color: var(--flag); font-weight: 600; }
 .chip {
   font: 600 .66rem var(--font-data); letter-spacing: .07em; text-transform: uppercase;
   padding: 3px 7px; border-radius: 3px; border: 1px solid var(--rule-strong); color: var(--muted);
@@ -345,6 +347,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .pr { display: block; margin-left: 0; }
   .pt { font-size: .9rem; }
   .game-head { padding-inline: 10px; }
+  .game-head .wx { order: 3; flex-basis: 100%; }
   .pick-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pick-fields .f-pick, .pick-fields .f-book, .pick-fields .f-act { grid-column: 1 / -1; }
   .f-act .btn.primary { flex: 1; }
@@ -448,6 +451,8 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
         <dd>Each price is the best line for that bet across your books, with the book under it. A better number wins: Iowa +4½ beats +4, Over 44½ beats Over 45½, and Under 45½ beats Under 44½. When the number is the same, the better price wins. If more than one book has the best line, they're all listed, like FD · DK.</dd>
         <dt>Highlighter</dt>
         <dd>The books disagree on this bet, and this is the better side of that. No highlight means the books have the same line, so it doesn't matter where you bet it. On a computer, hover over a price to see every book's line.</dd>
+        <dt>Weather</dt>
+        <dd>The forecast at the stadium for kickoff and the next three hours: the temperature, the sky or the highest chance of rain or snow, and the strongest wind. Wind matters most for totals and kicking, so games with 15 mph wind or 25 mph gusts are flagged Windy. Dome means indoors. Hover over the forecast on a computer to see the stadium.</dd>
         <dt>Middle</dt>
         <dd>Taking opposite sides at different books so that a narrow band of results wins both bets.</dd>
         <dt>Arb</dt>
@@ -458,7 +463,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
         <dd>The number to the left of each team is the sportsbook rotation number, the same one printed on betting sheets.</dd>
       </dl>
     </details>
-    <p class="fine">Odds from The Odds API. Lines refresh at 8am, noon and 5pm Central, Monday through Friday, and whenever you press Refresh. An open page picks up each refresh on its own. Lines can trail the sportsbook apps, so confirm the number in the app before you bet. You can also <a id="run-on-github" href="https://github.com/plerner16/cfb-line-shop/actions/workflows/refresh-odds.yml" target="_blank" rel="noopener">refresh on GitHub</a> by pressing Run workflow.</p>
+    <p class="fine">Odds from The Odds API. Lines refresh at 8am, noon and 5pm Central, Monday through Friday, and whenever you press Refresh. An open page picks up each refresh on its own. Lines can trail the sportsbook apps, so confirm the number in the app before you bet. You can also <a id="run-on-github" href="https://github.com/plerner16/cfb-line-shop/actions/workflows/refresh-odds.yml" target="_blank" rel="noopener">refresh on GitHub</a> by pressing Run workflow. Weather from <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, updated every hour.</p>
   </main>
 
   <!-- ===================== LEDGER ===================== -->
@@ -494,11 +499,11 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
   <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=5" defer></script>
-<script src="js/sample.js?v=5" defer></script>
-<script src="js/ledger-core.js?v=5" defer></script>
-<script src="js/common.js?v=5" defer></script>
-<script src="js/ledger.js?v=5" defer></script>
-<script src="js/board.js?v=5" defer></script>
+<script src="js/lines.js?v=6" defer></script>
+<script src="js/sample.js?v=6" defer></script>
+<script src="js/ledger-core.js?v=6" defer></script>
+<script src="js/common.js?v=6" defer></script>
+<script src="js/ledger.js?v=6" defer></script>
+<script src="js/board.js?v=6" defer></script>
 </body>
 </html>

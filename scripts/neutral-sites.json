@@ -1,0 +1,18 @@
+{
+  "_about": "Games not at the home team's stadium. Matched on both team names (either order) and a date range in Central time. Add bowls and conference championships here when they're set.",
+  "games": [
+    {
+      "teams": [
+        "Army Black Knights",
+        "Navy Midshipmen"
+      ],
+      "from": "2026-12-12",
+      "to": "2026-12-12",
+      "venue": "MetLife Stadium",
+      "city": "East Rutherford, NJ",
+      "lat": 40.813,
+      "lon": -74.074,
+      "roof": "open"
+    }
+  ]
+}
