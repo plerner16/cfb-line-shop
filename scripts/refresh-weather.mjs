@@ -18,7 +18,8 @@ const FORECAST = "https://api.open-meteo.com/v1/forecast";
 const GEOCODE = "https://geocoding-api.open-meteo.com/v1/search";
 export const GAME_HOURS = 4;   // kickoff hour plus the next three
 export const DAYS = 14;        // how far ahead to ask for (two weeks keeps each call at Open-Meteo's base weight)
-const CHUNK = 40;              // locations per request
+const CHUNK = 10;              // locations per request
+const TRIES = 3;               // attempts per request before giving up on this run
 const TZ = "America/Chicago";
 
 function readJson(path, fallback) {
@@ -87,6 +88,25 @@ export function summarize(hourly, kickoffSec) {
   };
 }
 
+function why(err) {
+  if (!err) return "unknown error";
+  if (err.name === "TimeoutError") return "Open-Meteo took too long to answer";
+  const c = err.cause;
+  return [err.message, c && (c.code || c.message)].filter(Boolean).join(": ");
+}
+
+async function forecastWithRetry(locs, fetchImpl) {
+  let last;
+  for (let attempt = 1; attempt <= TRIES; attempt++) {
+    try { return await forecast(locs, fetchImpl); } catch (err) {
+      last = err;
+      console.log(`Weather request for ${locs.length} stadiums failed (try ${attempt} of ${TRIES}): ${why(err)}`);
+      if (attempt < TRIES) await new Promise((r) => setTimeout(r, 2000 * attempt));
+    }
+  }
+  throw last;
+}
+
 async function forecast(locs, fetchImpl) {
   const url = new URL(FORECAST);
   url.search = new URLSearchParams({
@@ -135,24 +155,40 @@ export async function run({ oddsFile, outFile, stadiumsFile, neutralFile, now = 
     locs.get(key).games.push({ id: ev.id, kick: Math.floor(kick.getTime() / 1000) });
   }
 
+  // A batch that fails keeps its games' last forecast; the rest still update.
   const places = [...locs.values()];
-  try {
-    for (let i = 0; i < places.length; i += CHUNK) {
-      const chunk = places.slice(i, i + CHUNK);
-      const results = await forecast(chunk, fetchImpl);
-      chunk.forEach((loc, j) => {
-        loc.games.forEach((g) => {
-          const s = summarize(results[j].hourly, g.kick);
-          if (s) Object.assign(games[g.id], s);
-          else games[g.id].later = true;
-        });
-      });
+  const prevGames = (prev && prev.games) || {};
+  let failed = 0, lastError = "";
+  for (let i = 0; i < places.length; i += CHUNK) {
+    const chunk = places.slice(i, i + CHUNK);
+    let results;
+    try {
+      results = await forecastWithRetry(chunk, fetchImpl);
+    } catch (err) {
+      failed++;
+      lastError = why(err);
+      chunk.forEach((loc) => loc.games.forEach((g) => {
+        const old = prevGames[g.id];
+        if (old && old.temp != null) {
+          ["temp", "wind", "gust", "precip", "sky", "snow"].forEach((k) => { if (old[k] !== undefined) games[g.id][k] = old[k]; });
+        }
+      }));
+      continue;
     }
-  } catch (err) {
-    const message = err && err.name === "TimeoutError" ? "Couldn't reach Open-Meteo" : String(err && err.message || err);
-    console.log(`Weather not updated: ${message}. Keeping the last forecast.`);
-    return { changed: false, error: message, missing: [...missing] };
+    chunk.forEach((loc, j) => {
+      loc.games.forEach((g) => {
+        const s = summarize(results[j].hourly, g.kick);
+        if (s) Object.assign(games[g.id], s);
+        else games[g.id].later = true;
+      });
+    });
   }
+  const batches = Math.ceil(places.length / CHUNK);
+  if (failed && failed === batches) {
+    console.log(`Weather not updated: ${lastError}. Keeping the last forecast.`);
+    return { changed: false, error: lastError, missing: [...missing] };
+  }
+  if (failed) console.log(`${failed} of ${batches} weather requests failed (${lastError}); those games keep their last forecast.`);
 
   if (missing.size) console.log(`No stadium on file for: ${[...missing].join(", ")}. Add them to scripts/stadiums.json.`);
   const withWeather = Object.values(games).filter((g) => g.temp != null).length;
