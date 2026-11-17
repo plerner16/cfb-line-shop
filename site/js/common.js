@@ -2,8 +2,10 @@
 (function () {
   "use strict";
 
-  var REPO = "plerner16/cfb-line-shop";
+  var REPO = "plerner16/cfb-line-shop";          // the site and the lines (public)
   var API = "https://api.github.com/repos/" + REPO;
+  var LEDGER_REPO = "plerner16/cfb-bet-ledger";  // your bets (private)
+  var LEDGER_API = "https://api.github.com/repos/" + LEDGER_REPO;
   // GitHub fills in the new-token form from these (the repository still has to be picked by hand).
   var NEW_TOKEN_URL = "https://github.com/settings/personal-access-tokens/new?name=" + encodeURIComponent("Line Shop") +
     "&description=" + encodeURIComponent("Refresh lines and save bets from the CFB Line Shop site") +
@@ -115,7 +117,7 @@
   // What a GitHub refusal means for this device, in plain words.
   function tokenProblem(status, what) {
     if (status === 401) return "This device's GitHub token has expired or was deleted. Make a new one below and paste it here.";
-    if (what === "ledger") return "This device's GitHub token doesn't have access to your ledger (it was probably made just for Refresh). Make a new one below and paste it here; it replaces the old one.";
+    if (what === "ledger") return "This device's GitHub token doesn't have access to your private ledger (it was made before the ledger moved). Make a new one below, picking both cfb-line-shop and cfb-bet-ledger, and paste it here; it replaces the old one.";
     return "This device's GitHub token can't start refreshes. Make a new one below and paste it here; it replaces the old one.";
   }
 
@@ -151,7 +153,7 @@
 
   window.APP = {
     start: start,
-    REPO: REPO, API: API,
+    REPO: REPO, API: API, LEDGER_REPO: LEDGER_REPO, LEDGER_API: LEDGER_API,
     $: $, esc: esc, store: store, money: money,
     books: function () { return books; }, setBooks: setBooks, bookName: bookName, bookShort: bookShort,
     onBooks: function (fn) { bookListeners.push(fn); },

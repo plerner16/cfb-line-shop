@@ -386,7 +386,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
     <p>Refreshing lines and saving bets both go through your GitHub account, so each device needs a GitHub token. You do this once on each device, and it stays connected after that.</p>
     <ol>
       <li><a id="new-token-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Open the new-token page on GitHub</a>. The name, a one-year expiration and the permissions are already filled in.</li>
-      <li>Under <b>Repository access</b>, choose <b>Only select repositories</b> and pick <b>cfb-line-shop</b>.</li>
+      <li>Under <b>Repository access</b>, choose <b>Only select repositories</b> and pick both <b>cfb-line-shop</b> and <b>cfb-bet-ledger</b>.</li>
       <li>Click <b>Generate token</b>, copy it, and paste it here.</li>
     </ol>
     <div>
@@ -397,7 +397,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
       </div>
     </div>
     <p class="setup-err" id="connect-error" role="alert" hidden></p>
-    <p class="hint">The token is saved only in this browser, and it can only reach this site's repository. If you ever want to cut a device off, delete its token on GitHub.</p>
+    <p class="hint">The token is saved only in this browser, and it can only reach those two repositories. If you ever want to cut a device off, delete its token on GitHub.</p>
     <div class="row"><button type="button" class="linkish" id="close-connect">Not now</button></div>
   </section>
 
@@ -487,18 +487,18 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
     <div id="ledger-list"><p class="empty-state">Loading your ledger…</p></div>
 
-    <p class="fine">Your ledger is saved in the site's GitHub repository. Changes from your phone and computer show up on both.<span id="ledger-synced"></span></p>
+    <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both.<span id="ledger-synced"></span></p>
   </main>
 
   <p class="fine" id="device-access" hidden>This device is connected to GitHub, so it can refresh lines and save bets. <button type="button" class="linkish" id="forget-token">Disconnect it</button></p>
-  <p class="fine" id="device-none" hidden>This device can view lines and your ledger. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to refresh lines and save bets.</p>
+  <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=4" defer></script>
-<script src="js/sample.js?v=4" defer></script>
-<script src="js/ledger-core.js?v=4" defer></script>
-<script src="js/common.js?v=4" defer></script>
-<script src="js/ledger.js?v=4" defer></script>
-<script src="js/board.js?v=4" defer></script>
+<script src="js/lines.js?v=5" defer></script>
+<script src="js/sample.js?v=5" defer></script>
+<script src="js/ledger-core.js?v=5" defer></script>
+<script src="js/common.js?v=5" defer></script>
+<script src="js/ledger.js?v=5" defer></script>
+<script src="js/board.js?v=5" defer></script>
 </body>
 </html>

@@ -1,13 +1,11 @@
-/* The Ledger tab: bets saved in ledger/bets.json in the site's GitHub repository.
-   Anyone can read it; saving needs this device's GitHub token. */
+/* The Ledger tab: bets saved in bets.json in the private cfb-bet-ledger repository.
+   Reading and saving both need this device's GitHub token. */
 (function () {
   "use strict";
   var A = window.APP, L = window.LEDGER, LS = window.LS;
   var $ = A.$, esc = A.esc;
 
-  var FILE = "ledger/bets.json";
-  var CONTENTS = A.API + "/contents/" + FILE;
-  var RAW = "https://raw.githubusercontent.com/" + A.REPO + "/main/" + FILE;
+  var CONTENTS = A.LEDGER_API + "/contents/bets.json";
   var POLL_MS = 5 * 60 * 1000;
 
   // What GitHub has, and the changes on their way there (shown right away).
@@ -48,14 +46,7 @@
       return { bets: L.parseDoc(L.fromBase64(j.content)).bets, sha: j.sha };
     }
     if (tok && (res.status === 401 || res.status === 403 || res.status === 404)) throw { code: "token", status: res.status };
-    if (!tok && res.status === 404) throw { code: "locked" };
-    if (!tok && (res.status === 403 || res.status === 429)) {
-      // A public repository limits how often a device without a token can ask; the raw file has no such limit.
-      try {
-        var raw = await fetch(RAW + "?t=" + Date.now(), { cache: "no-store" });
-        if (raw.ok) return { bets: L.parseDoc(await raw.text()).bets, sha: null };
-      } catch (e) { /* fall through */ }
-    }
+    if (!tok && (res.status === 404 || res.status === 401 || res.status === 403)) throw { code: "locked" };
     throw { code: "http", status: res.status };
   }
 

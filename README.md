@@ -2,7 +2,7 @@
 
 The best college football line across your sportsbooks, refreshed on a schedule, plus your bet ledger.
 
-**Site:** https://plerner16.github.io/cfb-line-shop/ (the ledger is at `#ledger`)
+**Site:** https://plerner16.github.io/cfb-line-shop/ (the ledger is at `#ledger`, on connected devices)
 
 On your phone, open the site and use **Add to Home Screen** (Safari: Share button; Chrome: ⋮ menu). It opens full screen with its own icon.
 
@@ -36,11 +36,11 @@ Press **Refresh** on the site to refresh right now (3 credits), or go to **Actio
 
 ## The ledger
 
-Bets are saved in `ledger/bets.json` in this repository, one bet per line, so every device sees the same ledger and every change is in the history. The repository is public, so anyone with the site link can see the ledger. Saving a bet doesn't republish the site.
+Bets are saved in `bets.json` in the private repository `plerner16/cfb-bet-ledger`, one bet per line, so every connected device sees the same ledger and every change is in that repository's history. This repository (the site and the lines) stays public; it never holds your bets. A device that isn't connected sees the lines but not the ledger.
 
 ## Connecting a device
 
-Refreshing and saving bets go through GitHub, so each device needs a GitHub token once. The site walks you through it: the token page opens with the name, a one-year expiration and the two permissions it needs (Actions and Contents, read and write) already filled in; you pick the `cfb-line-shop` repository and paste the token back. It's kept only in that browser. Any device can view the lines and the ledger without one.
+Seeing the ledger, saving bets and refreshing go through GitHub, so each device needs a GitHub token once. The site walks you through it: the token page opens with the name, a one-year expiration and the two permissions it needs (Actions and Contents, read and write) already filled in; you pick the `cfb-line-shop` and `cfb-bet-ledger` repositories and paste the token back. It's kept only in that browser. Any device can view the lines without one.
 
 ## The API key
 
