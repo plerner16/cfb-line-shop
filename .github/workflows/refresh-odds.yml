@@ -6,13 +6,15 @@ on:
   # once each morning from 5am, Tuesday through Saturday (scripts/refresh-scores.mjs).
   schedule:
     - cron: "7 * * * *"
-  # "Run workflow" button on the Actions tab, and the site's Refresh button: lines and weather now.
+  # Started from outside: the site's Refresh button (force: true, lines now), the outside timer at
+  # cron-job.org (force: false, same as a scheduled run), or "Run workflow" on the Actions tab.
+  # GitHub skips many scheduled runs when it's busy, so the outside timer is what keeps the times.
   workflow_dispatch:
     inputs:
       force:
-        description: "Refresh now, even outside the schedule (uses 3 credits)"
+        description: "Refresh the lines now, even outside the schedule (uses 3 credits)"
         type: boolean
-        default: true
+        default: false
   # Changes to the page publish it (with fresh weather) without pulling new lines.
   push:
     branches: [main]

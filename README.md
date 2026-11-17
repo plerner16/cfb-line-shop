@@ -45,7 +45,9 @@ A GitHub Actions job (`.github/workflows/refresh-odds.yml`) runs every hour. `sc
 
 Refreshes happen at **8am, noon and 5pm Central, Monday through Friday**. If GitHub starts a run late or skips one, the next run makes it up. That's 15 refreshes a week at 3 credits each, about 195 of the free plan's 500 credits a month, which leaves roughly 100 refreshes a month for refreshing by hand. To change the times, edit `SCHEDULE` at the top of `scripts/refresh-odds.mjs`.
 
-Press **Refresh** on the site to refresh right now (3 credits), or go to **Actions → Refresh lines → Run workflow** on GitHub.
+Press **Refresh** on the site to refresh right now (3 credits), or go to **Actions → Refresh lines → Run workflow** on GitHub and tick **Refresh the lines now**.
+
+GitHub's own scheduler skips many runs when it's busy (it rarely ran this job in the morning), so a free timer at cron-job.org starts it at :05 every hour with `{"ref":"main","inputs":{"force":false}}`, which behaves like a scheduled run. GitHub's schedule stays on as a backup; extra runs do nothing extra.
 
 ## The ledger
 
