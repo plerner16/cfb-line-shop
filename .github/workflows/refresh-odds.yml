@@ -2,7 +2,8 @@ name: Refresh lines
 
 on:
   # Every hour, every day. The weather updates on every run (it's free). Lines only refresh at
-  # 8am, noon and 5pm Central on weekdays; scripts/refresh-odds.mjs decides which runs those are.
+  # 8am, noon and 5pm Central on weekdays (scripts/refresh-odds.mjs), and final scores are checked
+  # once each morning from 5am, Tuesday through Saturday (scripts/refresh-scores.mjs).
   schedule:
     - cron: "7 * * * *"
   # "Run workflow" button on the Actions tab, and the site's Refresh button: lines and weather now.
@@ -45,30 +46,39 @@ jobs:
           FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
         run: node scripts/refresh-odds.mjs
 
+      - name: Check final scores if it's time
+        id: scores
+        if: github.event_name != 'push'
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: node scripts/refresh-scores.mjs
+
       - name: Update the weather
         id: weather
         env:
           CHECK_STADIUMS: ${{ github.event_name == 'push' }}
         run: node scripts/refresh-weather.mjs
 
-      - name: Save the new lines and weather
-        if: steps.fetch.outputs.changed == 'true' || steps.weather.outputs.changed == 'true'
+      - name: Save the new lines, scores and weather
+        if: steps.fetch.outputs.changed == 'true' || steps.scores.outputs.changed == 'true' || steps.weather.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/data/odds.json site/data/weather.json
-          if [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then msg="Refresh lines"; else msg="Refresh weather"; fi
+          git add site/data/odds.json site/data/scores.json site/data/weather.json
+          if [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then msg="Refresh lines";
+          elif [ "${{ steps.scores.outputs.changed }}" = "true" ]; then msg="Check final scores";
+          else msg="Refresh weather"; fi
           git commit -m "$msg" || exit 0
           for attempt in 1 2 3; do
             git pull --rebase --quiet origin main && git push --quiet origin HEAD:main && exit 0
             sleep 5
           done
-          echo "Couldn't save the new lines and weather to the repository." && exit 1
+          echo "Couldn't save the new data to the repository." && exit 1
 
       - name: Decide whether to publish
         id: decide
         run: |
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ steps.fetch.outputs.changed }}" = "true" ] || [ "${{ steps.weather.outputs.changed }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ steps.fetch.outputs.changed }}" = "true" ] || [ "${{ steps.scores.outputs.changed }}" = "true" ] || [ "${{ steps.weather.outputs.changed }}" = "true" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"

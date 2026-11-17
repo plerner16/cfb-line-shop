@@ -352,7 +352,11 @@
       startTime: LS.localStamp(start),
       result: "pending",
       createdAt: Date.now(),
-      importKey: it.id + ":" + (it.addedAt || 0)
+      importKey: it.id + ":" + (it.addedAt || 0),
+      // Lets the morning grader find the game exactly.
+      eventId: it.gameId,
+      market: it.market,
+      side: it.row
     };
   }
 

@@ -215,11 +215,13 @@
     var plCls = b.result === "win" ? "pos" : b.result === "loss" ? "neg" : "";
     var meta = [fmtStart(b.startTime), b.book, fmtOdds(b.odds)];
     if (ui.sort === "start") meta.push(L.displayWeek(b.week));
+    if (b.final && b.result && b.result !== "pending") meta.push("Final: " + b.final);
     var del = ui.confirmDelete === b.id;
     return '<li class="bet' + (saving ? " saving" : "") + '" data-id="' + esc(b.id) + '">' +
       '<div class="bet-main">' + (b.teams ? '<div class="bet-teams">' + esc(b.teams) + "</div>" : "") +
       '<div class="bet-pick">' + esc(b.pick) + "</div>" +
-      '<div class="bet-meta">' + meta.filter(Boolean).map(esc).join(" · ") + "</div></div>" +
+      '<div class="bet-meta">' + meta.filter(Boolean).map(esc).join(" · ") +
+      (b.gradedBy === "auto" && b.result && b.result !== "pending" ? ' <span class="auto-tag" title="Graded automatically from the final score">Auto</span>' : "") + "</div></div>" +
       '<div class="bet-figs"><span class="wager">' + esc(A.money(b.amount)) + '</span><span class="pl ' + plCls + '">' + esc(plText) + "</span></div>" +
       '<div class="bet-ctl">' + resultButtons(b) +
       '<button type="button" class="btn icon" data-act="edit" aria-label="Edit ' + esc(b.pick) + '">✎</button>' +
@@ -382,7 +384,8 @@
     if (act === "result") {
       var next = b.result === btn.dataset.v ? "pending" : btn.dataset.v;
       var words = { win: "won", loss: "lost", push: "push", pending: "back to pending" };
-      var doSet = function () { run({ type: "update", id: id, fields: { result: next } }, "Ledger: " + b.pick + " " + words[next]); };
+      // Marked by hand: the morning grader leaves this bet alone from now on.
+      var doSet = function () { run({ type: "update", id: id, fields: { result: next, gradedBy: "you" } }, "Ledger: " + b.pick + " " + words[next]); };
       if (!needsDevice(doSet)) doSet();
     }
   });

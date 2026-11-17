@@ -319,6 +319,10 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .bet-teams { font-size: .8rem; color: var(--muted); }
 .bet-pick { font-weight: 600; font-size: 1.02rem; overflow-wrap: anywhere; }
 .bet-meta { margin-top: 1px; font: 400 .74rem var(--font-data); color: var(--muted); }
+.auto-tag {
+  display: inline-block; margin-left: 4px; padding: 0 5px; border: 1px solid var(--rule-strong); border-radius: 3px;
+  font: 600 .6rem/1.5 var(--font-data); letter-spacing: .08em; text-transform: uppercase; vertical-align: 1px;
+}
 .bet-figs { display: grid; justify-items: end; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 .bet-figs .wager { font-size: .8rem; color: var(--muted); }
 .bet-figs .pl { font-weight: 600; font-size: .95rem; }
@@ -492,18 +496,18 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
     <div id="ledger-list"><p class="empty-state">Loading your ledger…</p></div>
 
-    <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both.<span id="ledger-synced"></span></p>
+    <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both. Pending bets are graded from final scores each morning, Tuesday through Saturday (Saturday's games on Tuesday); bets you mark yourself are never changed.<span id="ledger-synced"></span></p>
   </main>
 
   <p class="fine" id="device-access" hidden>This device is connected to GitHub, so it can refresh lines and save bets. <button type="button" class="linkish" id="forget-token">Disconnect it</button></p>
   <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=6" defer></script>
-<script src="js/sample.js?v=6" defer></script>
-<script src="js/ledger-core.js?v=6" defer></script>
-<script src="js/common.js?v=6" defer></script>
-<script src="js/ledger.js?v=6" defer></script>
-<script src="js/board.js?v=6" defer></script>
+<script src="js/lines.js?v=7" defer></script>
+<script src="js/sample.js?v=7" defer></script>
+<script src="js/ledger-core.js?v=7" defer></script>
+<script src="js/common.js?v=7" defer></script>
+<script src="js/ledger.js?v=7" defer></script>
+<script src="js/board.js?v=7" defer></script>
 </body>
 </html>

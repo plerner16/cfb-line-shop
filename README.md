@@ -23,6 +23,12 @@ Each game shows the forecast at the stadium for kickoff and the next three hours
 - `scripts/stadiums.json` places each team's home games (stadium, city, coordinates, roof). A team that's missing shows no weather, and the hourly job's log names it.
 - `scripts/neutral-sites.json` lists games played somewhere else (bowls, conference championships, Army–Navy), matched on both teams and a date range.
 
+## Final scores and grading
+
+`scripts/refresh-scores.mjs` checks final scores once a morning, Tuesday through Saturday, at the first hourly run from 5am Central, and saves them to `site/data/scores.json` (two weeks kept). Each check returns every game completed in the last three days and costs 2 credits, about 43 a month. Tuesday's check reaches back to Saturday morning, so it covers all of Saturday's games; the other mornings cover the night before. A failed check is retried the next hour.
+
+The private `cfb-bet-ledger` repository grades pending bets from that file each morning (its own workflow). Bets added from the card carry their game id, so they're matched exactly; bets logged by hand are matched on the matchup and date. Bets you mark yourself are never changed.
+
 ## Adding a book
 
 The books live in `site/books.json`. Add a line with The Odds API's key for the book, for example:
