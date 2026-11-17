@@ -53,6 +53,8 @@ GitHub's own scheduler skips many runs when it's busy (it rarely ran this job in
 
 Bets are saved in `bets.json` in the private repository `plerner16/cfb-bet-ledger`, one bet per line, so every connected device sees the same ledger and every change is in that repository's history. This repository (the site and the lines) stays public; it never holds your bets. A device that isn't connected sees the lines but not the ledger.
 
+Each bet keeps when it was placed (`placedAt`, local time like `startTime`). Add to ledger stamps the current time; logging by hand defaults to now, and either can be changed later. The Ledger tab's **Early vs late** table groups settled bets by how long before kickoff they were placed (3+ days, 1–3 days, game day, after kickoff) and shows the record, net and return for each. Bets saved before placed times existed count from when they were logged, if that was before kickoff; the rest are left out of the table.
+
 ## Connecting a device
 
 Seeing the ledger, saving bets and refreshing go through GitHub, so each device needs a GitHub token once. The site walks you through it: the token page opens with the name, a one-year expiration and the two permissions it needs (Actions and Contents, read and write) already filled in; you pick the `cfb-line-shop` and `cfb-bet-ledger` repositories and paste the token back. It's kept only in that browser. Any device can view the lines without one.

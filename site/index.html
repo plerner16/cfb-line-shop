@@ -319,6 +319,17 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .bet-teams { font-size: .8rem; color: var(--muted); }
 .bet-pick { font-weight: 600; font-size: 1.02rem; overflow-wrap: anywhere; }
 .bet-meta { margin-top: 1px; font: 400 .74rem var(--font-data); color: var(--muted); }
+.bet-placed { margin-top: 1px; font: 400 .72rem var(--font-data); color: var(--muted); }
+.timing { padding: 12px 14px; display: grid; gap: 8px; }
+.timing-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.timing-head h2 { margin: 0; font: 800 1.2rem/1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
+.timing-scroll { overflow-x: auto; }
+.timing-table { width: 100%; max-width: 680px; border-collapse: collapse; font: 500 .86rem var(--font-data); font-variant-numeric: tabular-nums; }
+.timing-table th, .timing-table td { padding: 6px 8px; text-align: right; border-top: 1px solid var(--rule); white-space: nowrap; }
+.timing-table thead th { border-top: 0; font: 600 .62rem var(--font-data); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.timing-table th:first-child { text-align: left; padding-left: 0; }
+.timing-table tbody th { font: 600 .86rem var(--font-body); }
+.timing-table .sub { display: block; font: 400 .7rem var(--font-data); color: var(--muted); }
 .auto-tag {
   display: inline-block; margin-left: 4px; padding: 0 5px; border: 1px solid var(--rule-strong); border-radius: 3px;
   font: 600 .6rem/1.5 var(--font-data); letter-spacing: .08em; text-transform: uppercase; vertical-align: 1px;
@@ -361,6 +372,11 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .bet { grid-template-columns: minmax(0, 1fr) auto; padding: 10px 12px; }
   .bet-ctl { grid-column: 1 / -1; }
   .bet-ctl .res { margin-right: auto; }
+  .timing { padding: 12px; }
+  .timing-table { font-size: .8rem; }
+  .timing-table th, .timing-table td { padding: 6px 4px; }
+  .timing-table tbody th { font-size: .82rem; }
+  .timing-table th:last-child, .timing-table td:last-child { padding-right: 0; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -477,6 +493,20 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
     <div class="tally" id="ledger-tally" aria-live="polite"></div>
 
+    <section class="timing sheet" id="ledger-timing" hidden aria-labelledby="timing-title">
+      <div class="timing-head">
+        <h2 id="timing-title">Early vs late</h2>
+        <span class="mini">By how long before kickoff you placed the bet</span>
+      </div>
+      <div class="timing-scroll">
+        <table class="timing-table">
+          <thead><tr><th scope="col">Placed</th><th scope="col">Bets</th><th scope="col">Record</th><th scope="col">Net</th><th scope="col">Return</th></tr></thead>
+          <tbody id="timing-body"></tbody>
+        </table>
+      </div>
+      <p class="fine" id="timing-note"></p>
+    </section>
+
     <details class="logbet" id="logbet">
       <summary>Log a bet by hand</summary>
       <form id="bet-form" novalidate>
@@ -496,18 +526,18 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
     <div id="ledger-list"><p class="empty-state">Loading your ledger…</p></div>
 
-    <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both. Pending bets are graded from final scores each morning, Tuesday through Saturday (Saturday's games on Tuesday); bets you mark yourself are never changed.<span id="ledger-synced"></span></p>
+    <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both. Pending bets are graded from final scores each morning, Tuesday through Saturday (Saturday's games on Tuesday); bets you mark yourself are never changed. Each bet keeps when you placed it: Add to ledger stamps the time, and you can change it when you log or edit a bet.<span id="ledger-synced"></span></p>
   </main>
 
   <p class="fine" id="device-access" hidden>This device is connected to GitHub, so it can refresh lines and save bets. <button type="button" class="linkish" id="forget-token">Disconnect it</button></p>
   <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=7" defer></script>
-<script src="js/sample.js?v=7" defer></script>
-<script src="js/ledger-core.js?v=7" defer></script>
-<script src="js/common.js?v=7" defer></script>
-<script src="js/ledger.js?v=7" defer></script>
-<script src="js/board.js?v=7" defer></script>
+<script src="js/lines.js?v=8" defer></script>
+<script src="js/sample.js?v=8" defer></script>
+<script src="js/ledger-core.js?v=8" defer></script>
+<script src="js/common.js?v=8" defer></script>
+<script src="js/ledger.js?v=8" defer></script>
+<script src="js/board.js?v=8" defer></script>
 </body>
 </html>

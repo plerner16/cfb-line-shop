@@ -353,6 +353,8 @@
       result: "pending",
       createdAt: Date.now(),
       importKey: it.id + ":" + (it.addedAt || 0),
+      // Pressing Add to ledger right after betting makes this when the bet was placed.
+      placedAt: LS.localStamp(new Date()),
       // Lets the morning grader find the game exactly.
       eventId: it.gameId,
       market: it.market,

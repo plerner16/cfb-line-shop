@@ -165,6 +165,7 @@
   // ---------- formatting ----------
   var startFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
   var syncFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+  var placedFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
   function fmtStart(raw) {
     if (!raw) return "";
     var d = new Date(raw);
@@ -186,6 +187,27 @@
       '<div class="net' + netCls + '"><b>' + esc(A.money(s.net, true)) + "</b><span>Net</span></div>" +
       "<div><b>" + s.wins + "-" + s.losses + "-" + s.pushes + "</b><span>Record</span></div>" +
       "<div><b>" + s.pending + "</b><span>Pending</span></div>";
+  }
+
+  // Early vs late: how bets did by how long before kickoff they were placed.
+  function renderTiming(list) {
+    var t = L.timing(list);
+    var rows = t.rows.filter(function (r) { return r.bets > 0 || r.key !== "live"; });
+    var known = t.rows.reduce(function (n, r) { return n + r.bets; }, 0);
+    if (!known) { $("ledger-timing").hidden = true; return; }
+    $("ledger-timing").hidden = false;
+    $("timing-body").innerHTML = rows.map(function (r) {
+      var settled = r.wins + r.losses + r.pushes;
+      var ret = r.stake > 0 ? r.net / r.stake : null;
+      var cls = settled ? (r.net > 0.004 ? "pos" : r.net < -0.004 ? "neg" : "") : "";
+      return "<tr><th scope=\"row\">" + esc(r.label) + (r.pending ? '<span class="sub">' + r.pending + " pending</span>" : "") + "</th><td>" + r.bets + "</td>" +
+        "<td>" + (settled ? r.wins + "-" + r.losses + "-" + r.pushes : "—") + "</td>" +
+        '<td class="' + cls + '">' + (settled ? esc(A.money(r.net, true)) : "—") + "</td>" +
+        '<td class="' + cls + '">' + (ret == null ? "—" : (ret > 0 ? "+" : ret < 0 ? "−" : "") + Math.abs(Math.round(ret * 100)) + "%") + "</td></tr>";
+    }).join("");
+    $("timing-note").textContent = t.unknown
+      ? t.unknown + (t.unknown === 1 ? " bet has" : " bets have") + " no placed time (logged after the game started), so " + (t.unknown === 1 ? "it's" : "they're") + " left out. Older bets logged before kickoff count from when they were logged; new ones from when you press Add to ledger."
+      : "Bets count from when you pressed Add to ledger or the time you entered.";
   }
 
   function renderBookFilter(list) {
@@ -217,11 +239,16 @@
     if (ui.sort === "start") meta.push(L.displayWeek(b.week));
     if (b.final && b.result && b.result !== "pending") meta.push("Final: " + b.final);
     var del = ui.confirmDelete === b.id;
+    var placed = L.placedInfo(b), lead = L.leadHours(b);
+    var placedLine = placed
+      ? '<div class="bet-placed"' + (placed.exact ? "" : ' title="When it was logged; no placed time was saved for this bet"') + ">" +
+        (placed.exact ? "Placed " : "Logged ") + esc(placedFmt.format(new Date(placed.ms))) + (lead != null ? " · " + esc(L.leadText(lead)) : "") + "</div>"
+      : "";
     return '<li class="bet' + (saving ? " saving" : "") + '" data-id="' + esc(b.id) + '">' +
       '<div class="bet-main">' + (b.teams ? '<div class="bet-teams">' + esc(b.teams) + "</div>" : "") +
       '<div class="bet-pick">' + esc(b.pick) + "</div>" +
       '<div class="bet-meta">' + meta.filter(Boolean).map(esc).join(" · ") +
-      (b.gradedBy === "auto" && b.result && b.result !== "pending" ? ' <span class="auto-tag" title="Graded automatically from the final score">Auto</span>' : "") + "</div></div>" +
+      (b.gradedBy === "auto" && b.result && b.result !== "pending" ? ' <span class="auto-tag" title="Graded automatically from the final score">Auto</span>' : "") + "</div>" + placedLine + "</div>" +
       '<div class="bet-figs"><span class="wager">' + esc(A.money(b.amount)) + '</span><span class="pl ' + plCls + '">' + esc(plText) + "</span></div>" +
       '<div class="bet-ctl">' + resultButtons(b) +
       '<button type="button" class="btn icon" data-act="edit" aria-label="Edit ' + esc(b.pick) + '">✎</button>' +
@@ -248,6 +275,7 @@
       '<label><span class="mini">Stake $</span><input class="input" name="amount" inputmode="decimal" value="' + esc(b.amount ? Number(b.amount).toFixed(2) : "") + '"></label>' +
       '<label><span class="mini">Odds</span><input class="input" name="odds" placeholder="-110" value="' + esc(b.odds ? fmtOdds(b.odds).replace("−", "-") : "") + '"></label>' +
       '<label class="wide"><span class="mini">Kickoff</span><input class="input" type="datetime-local" name="startTime" value="' + esc(b.startTime || "") + '"></label>' +
+      '<label class="wide"><span class="mini">Placed</span><input class="input" type="datetime-local" name="placedAt" value="' + esc(b.placedAt || "") + '"></label>' +
       "</div>";
   }
 
@@ -268,12 +296,14 @@
       pick: get("pick"),
       amount: L.parseAmount(get("amount")),
       odds: L.parseOdds(get("odds")),
-      startTime: get("startTime")
+      startTime: get("startTime"),
+      placedAt: get("placedAt")
     };
     if (!f.pick) return { error: "Add the pick, like “Iowa +4.5”." };
     if (!f.book) return { error: "Choose the sportsbook." };
     if (f.amount == null) return { error: "The stake should be a dollar amount above zero." };
     if (f.odds == null) return { error: "Odds should look like -110 or +150." };
+    if (f.placedAt && !isFinite(Date.parse(f.placedAt))) return { error: "The placed time doesn't look right." };
     return { fields: f };
   }
 
@@ -296,6 +326,7 @@
     rendered = true;
     var all = bets();
     renderTally(all);
+    renderTiming(all);
     renderBookFilter(all);
     renderStatus();
     var list = ui.book === "all" ? all : all.filter(function (b) { return b.book === ui.book; });
@@ -421,7 +452,8 @@
   function resetNewForm() {
     var now = new Date();
     $("bet-form-fields").innerHTML = fieldsHtml("n", {
-      week: LS.cfbWeek(now), book: (A.books()[0] || {}).name, amount: parseFloat(A.store.get("ls.stake")) || 7.5
+      week: LS.cfbWeek(now), book: (A.books()[0] || {}).name, amount: parseFloat(A.store.get("ls.stake")) || 7.5,
+      placedAt: LS.localStamp(now)
     });
     $("bet-form-error").hidden = true;
   }

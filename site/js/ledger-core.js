@@ -106,6 +106,66 @@
     return /^\d+$/.test(s) ? "Week " + s : s;
   }
 
+  // ---------- when a bet was placed ----------
+  // placedAt is a local "YYYY-MM-DDTHH:MM" like startTime. Bets saved before placed times existed
+  // fall back to when they were logged, but only if that was before kickoff (otherwise it says
+  // nothing about when the bet was made).
+  function placedInfo(bet) {
+    if (bet.placedAt) {
+      var t = Date.parse(bet.placedAt);
+      if (isFinite(t)) return { ms: t, exact: true };
+    }
+    var start = Date.parse(bet.startTime);
+    var logged = Number(bet.createdAt);
+    if (isFinite(start) && logged > 0 && logged < start) return { ms: logged, exact: false };
+    return null;
+  }
+  // Hours from placing the bet to kickoff (negative: placed after kickoff). Null when unknown.
+  function leadHours(bet) {
+    var p = placedInfo(bet), start = Date.parse(bet.startTime);
+    return p && isFinite(start) ? (start - p.ms) / 3600e3 : null;
+  }
+  var TIMING = [
+    { key: "early", label: "3+ days out", min: 72 },
+    { key: "mid", label: "1–3 days out", min: 24 },
+    { key: "gameday", label: "Game day", min: 0 },
+    { key: "live", label: "After kickoff", min: -Infinity }
+  ];
+  function timingKey(hours) {
+    if (hours == null) return null;
+    for (var i = 0; i < TIMING.length; i++) if (hours >= TIMING[i].min) return TIMING[i].key;
+    return null;
+  }
+  // Record, net and return for each timing group. Pending bets are counted but not scored.
+  function timing(bets) {
+    var rows = TIMING.map(function (t) {
+      return { key: t.key, label: t.label, bets: 0, wins: 0, losses: 0, pushes: 0, pending: 0, net: 0, stake: 0 };
+    });
+    var unknown = 0;
+    bets.forEach(function (b) {
+      var key = timingKey(leadHours(b));
+      if (!key) { unknown++; return; }
+      var r = rows.filter(function (x) { return x.key === key; })[0];
+      r.bets++;
+      if (b.result === "win") r.wins++;
+      else if (b.result === "loss") r.losses++;
+      else if (b.result === "push") r.pushes++;
+      else { r.pending++; return; }
+      r.net += profitFor(b);
+      if (b.result !== "push") r.stake += Number(b.amount) || 0;
+    });
+    return { rows: rows, unknown: unknown };
+  }
+  function leadText(hours) {
+    if (hours == null) return "";
+    if (hours < 0) return "after kickoff";
+    if (hours >= 48) return Math.floor(hours / 24) + " days before kickoff";
+    if (hours >= 24) return "1 day before kickoff";
+    if (hours >= 2) return Math.floor(hours) + " hours before kickoff";
+    if (hours >= 1) return "1 hour before kickoff";
+    return Math.max(1, Math.round(hours * 60)) + " min before kickoff";
+  }
+
   // ---------- input checks ----------
   function parseOdds(raw) {
     var n = Number(String(raw == null ? "" : raw).trim().replace(/^\+/, "").replace("−", "-"));
@@ -122,7 +182,8 @@
     emptyDoc: emptyDoc, parseDoc: parseDoc, formatDoc: formatDoc, toBase64: toBase64, fromBase64: fromBase64, newId: newId,
     applyChange: applyChange, profitFor: profitFor, summary: summary,
     normWeek: normWeek, weekSortKey: weekSortKey, displayWeek: displayWeek,
-    parseOdds: parseOdds, parseAmount: parseAmount
+    parseOdds: parseOdds, parseAmount: parseAmount,
+    placedInfo: placedInfo, leadHours: leadHours, timing: timing, timingKey: timingKey, leadText: leadText, TIMING: TIMING
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.LEDGER = api;
