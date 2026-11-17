@@ -30,29 +30,42 @@
   // ---------- reading ----------
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+  // Reads the ledger. Failures come back as { code, status }:
+  //   "locked"   the repository is private and this device isn't connected
+  //   "token"    this device's token can't open it (expired, or made without Contents access)
+  //   "network" / "http"
+  // A ledger that can't be opened is never shown as an empty one.
   async function fetchLatest() {
     var tok = A.token();
     var res;
     try {
       res = await A.gh("GET", CONTENTS + "?ref=main", tok || null);
-      if (res.status === 401 && tok) res = await A.gh("GET", CONTENTS + "?ref=main", null);
     } catch (e) {
-      throw new Error("Couldn't reach GitHub to load the ledger. Check your connection; it tries again on its own.");
+      throw { code: "network" };
     }
-    if (res.status === 404) return { bets: [], sha: null };
     if (res.ok) {
       var j = await res.json();
       return { bets: L.parseDoc(L.fromBase64(j.content)).bets, sha: j.sha };
     }
-    if (res.status === 403 || res.status === 429) {
-      // GitHub limits how often a device without a token can ask; the raw file has no such limit.
-      var raw = await fetch(RAW + "?t=" + Date.now(), { cache: "no-store" });
-      if (raw.ok) return { bets: L.parseDoc(await raw.text()).bets, sha: null };
+    if (tok && (res.status === 401 || res.status === 403 || res.status === 404)) throw { code: "token", status: res.status };
+    if (!tok && res.status === 404) throw { code: "locked" };
+    if (!tok && (res.status === 403 || res.status === 429)) {
+      // A public repository limits how often a device without a token can ask; the raw file has no such limit.
+      try {
+        var raw = await fetch(RAW + "?t=" + Date.now(), { cache: "no-store" });
+        if (raw.ok) return { bets: L.parseDoc(await raw.text()).bets, sha: null };
+      } catch (e) { /* fall through */ }
     }
-    throw new Error("GitHub answered with error " + res.status + " when loading the ledger. It tries again on its own.");
+    throw { code: "http", status: res.status };
+  }
+
+  function loadText(err) {
+    if (err.code === "network") return "Couldn't reach GitHub to load the ledger. Check your connection; it tries again on its own.";
+    return "GitHub answered with error " + err.status + " when loading the ledger. It tries again on its own.";
   }
 
   var loading = null;
+  var access = null; // null when the ledger opened; otherwise the "locked" / "token" failure
   function load() {
     if (loading || pending.length) return loading || Promise.resolve();
     loading = fetchLatest().then(function (doc) {
@@ -60,8 +73,16 @@
       server.loaded = true;
       server.at = new Date();
       loadProblem = "";
+      access = null;
     }, function (err) {
-      loadProblem = err.message;
+      if (err && (err.code === "locked" || err.code === "token")) {
+        access = err;
+        loadProblem = "";
+        // What this device showed before is no longer something it may see.
+        server = { bets: [], sha: null, loaded: false, at: null };
+      } else {
+        loadProblem = loadText(err || {});
+      }
     }).then(function () { loading = null; render(); });
     return loading;
   }
@@ -88,7 +109,7 @@
       try {
         var first = await fetchLatest();
         server.bets = first.bets; server.sha = first.sha; server.loaded = true;
-      } catch (e) { return fail(p, { code: "network" }); }
+      } catch (e) { return fail(p, e && e.code === "token" ? e : { code: e && e.code === "http" ? "http" : "network", status: e && e.status }); }
     }
     var next = L.applyChange(server.bets, p.change);
     if (!next.changed) { drop(p); render(); return next; } // already there, or deleted elsewhere
@@ -110,7 +131,7 @@
       try {
         var latest = await fetchLatest();
         server.bets = latest.bets; server.sha = latest.sha;
-      } catch (e) { return fail(p, { code: "network" }); }
+      } catch (e) { return fail(p, e && e.code === "token" ? e : { code: e && e.code === "http" ? "http" : "network", status: e && e.status }); }
       return commit(p, attempt + 1);
     }
     if (res.status === 401 || res.status === 403 || res.status === 404) return fail(p, { code: "token", status: res.status });
@@ -286,6 +307,12 @@
     renderStatus();
     var list = ui.book === "all" ? all : all.filter(function (b) { return b.book === ui.book; });
     var box = $("ledger-list");
+    if (access && !all.length) {
+      box.innerHTML = '<div class="empty-state locked"><p>' + esc(access.code === "locked"
+        ? "Your ledger is private. Connect this device to GitHub to see it; you only do this once on each device."
+        : A.tokenProblem(access.status, "ledger")) + '</p><button type="button" class="btn primary" id="ledger-unlock">Connect this device</button></div>';
+      return;
+    }
     if (!server.loaded && !all.length) {
       box.innerHTML = '<p class="empty-state">' + (loadProblem ? esc(loadProblem) : "Loading your ledger…") + "</p>";
       return;
@@ -316,12 +343,13 @@
   function renderStatus() {
     var st = $("ledger-status"), t = $("ledger-status-text");
     if (pending.length) { st.dataset.state = "saving"; t.textContent = "Saving…"; }
+    else if (access) { st.dataset.state = "sample"; t.textContent = access.code === "locked" ? "Private" : "Reconnect"; }
     else if (loadProblem && !server.loaded) { st.dataset.state = "stale"; t.textContent = "Couldn't load"; }
     else if (!server.loaded) { st.dataset.state = "loading"; t.textContent = "Loading…"; }
     else if (!A.token()) { st.dataset.state = "sample"; t.textContent = "View only"; }
     else { st.dataset.state = "live"; t.textContent = "Saved"; }
     st.title = server.at ? "Last synced " + server.at.toLocaleString() : "";
-    $("ledger-readonly").hidden = !!A.token();
+    $("ledger-readonly").hidden = !!A.token() || !server.loaded;
     $("ledger-synced").textContent = server.at ? " Last synced " + syncFmt.format(server.at) + "." : "";
   }
 
@@ -333,6 +361,13 @@
   }
 
   $("ledger-list").addEventListener("click", function (e) {
+    if (e.target.closest("#ledger-unlock")) {
+      A.openConnect({
+        reason: access && access.code === "token" ? A.tokenProblem(access.status, "ledger") : "Connect this device to see your ledger. You only do this once on each device.",
+        after: load
+      });
+      return;
+    }
     var btn = e.target.closest("button[data-act]");
     if (!btn) return;
     var li = btn.closest(".bet"), id = li && li.dataset.id;
@@ -431,7 +466,11 @@
   });
 
   A.onView(function (v) { if (v === "ledger") { render(); load(); } });
-  A.onDevice(function () { renderStatus(); });
+  // A token was saved or removed: open the ledger again with it.
+  A.onDevice(function () {
+    access = null;
+    if (A.currentView() === "ledger") load(); else renderStatus();
+  });
   A.onBooks(function () { resetNewForm(); });
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible" && A.currentView() === "ledger") load();

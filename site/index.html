@@ -233,6 +233,8 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .notes .flag .tag { color: var(--flag); }
 
 .empty-state { margin: 0; padding: 28px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--rule-strong); border-radius: 6px; }
+.empty-state.locked { display: grid; gap: 14px; justify-items: center; color: var(--ink); }
+.empty-state.locked p { margin: 0; max-width: 52ch; }
 
 /* explainer */
 .explain { border-top: 1px solid var(--rule-strong); padding-top: 12px; }
@@ -485,18 +487,18 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
     <div id="ledger-list"><p class="empty-state">Loading your ledger…</p></div>
 
-    <p class="fine">Your ledger is saved in the site's GitHub repository, so anyone with the site link can see it. Changes from your phone and computer show up on both.<span id="ledger-synced"></span></p>
+    <p class="fine">Your ledger is saved in the site's GitHub repository. Changes from your phone and computer show up on both.<span id="ledger-synced"></span></p>
   </main>
 
   <p class="fine" id="device-access" hidden>This device is connected to GitHub, so it can refresh lines and save bets. <button type="button" class="linkish" id="forget-token">Disconnect it</button></p>
   <p class="fine" id="device-none" hidden>This device can view lines and your ledger. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to refresh lines and save bets.</p>
 </div>
 
-<script src="js/lines.js?v=3" defer></script>
-<script src="js/sample.js?v=3" defer></script>
-<script src="js/ledger-core.js?v=3" defer></script>
-<script src="js/common.js?v=3" defer></script>
-<script src="js/ledger.js?v=3" defer></script>
-<script src="js/board.js?v=3" defer></script>
+<script src="js/lines.js?v=4" defer></script>
+<script src="js/sample.js?v=4" defer></script>
+<script src="js/ledger-core.js?v=4" defer></script>
+<script src="js/common.js?v=4" defer></script>
+<script src="js/ledger.js?v=4" defer></script>
+<script src="js/board.js?v=4" defer></script>
 </body>
 </html>

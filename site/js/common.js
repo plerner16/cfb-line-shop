@@ -115,7 +115,7 @@
   // What a GitHub refusal means for this device, in plain words.
   function tokenProblem(status, what) {
     if (status === 401) return "This device's GitHub token has expired or was deleted. Make a new one below and paste it here.";
-    if (what === "ledger") return "This device's GitHub token can't save bets yet (it was probably made just for Refresh). Make a new one below and paste it here; it replaces the old one.";
+    if (what === "ledger") return "This device's GitHub token doesn't have access to your ledger (it was probably made just for Refresh). Make a new one below and paste it here; it replaces the old one.";
     return "This device's GitHub token can't start refreshes. Make a new one below and paste it here; it replaces the old one.";
   }
 
