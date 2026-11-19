@@ -115,8 +115,12 @@
     if (!linkedGame || state.source !== "live" || !state.history) return;
     var id = linkedGame;
     linkedGame = null;
-    var item = state.games.filter(function (it) { return it.g.id === id; })[0];
     try { history.replaceState(null, "", location.pathname + location.search + "#lines"); } catch (e) { /* fine */ }
+    showGame(id);
+  }
+  // Shows one game on the board with its line moves open (also used by the Big moves list).
+  function showGame(id) {
+    var item = state.games.filter(function (it) { return it.g.id === id; })[0];
     if (!item) return; // already kicked off and gone from the board
     if (windowGames().indexOf(item) < 0) state.windowMode = "all";
     if (visibleGames().indexOf(item) < 0) {
@@ -130,6 +134,8 @@
   }
   readLink();
   window.addEventListener("hashchange", function () { readLink(); openLinkedGame(); });
+  A.showGame = showGame;
+  A.onSeen(function () { if (state.source === "live") renderBoard(); });
 
   var inflight = null;
   // Resolves once the newest odds.json has been read (or the read failed).
@@ -630,9 +636,10 @@
     var big = hist && !g.live ? H.bigMoves(hist, g.bookKeys, Date.now()) : [];
     if (big.length) {
       var why = big.map(function (m) {
-        return H.moveText(g, m) + " at " + A.bookName(m.book) + ", " + H.pointsText(m.move) + " since " + moveTime.format(new Date(m.since));
+        return H.moveText(g, m) + " at " + A.bookName(m.book) + ", " + H.pointsText(m.move) + " " + H.spanText(m, function (t) { return moveTime.format(new Date(t)); });
       }).join(". ");
-      chips.push('<span class="chip big" title="' + esc(why + ". More than 1 point in a day, 2 in two days, and so on, is a big move.") + '">Big move</span>');
+      var seenAll = !big.some(function (m) { return H.isNewMove(A.seenMoves(), g.id, m); });
+      chips.push('<span class="chip big' + (seenAll ? " seen" : "") + '" title="' + esc(why + ". More than 1 point in a day, 2 in two days, and so on, is a big move." + (seenAll ? " You've marked it seen." : "")) + '">Big move</span>');
     }
     if (hist) {
       chips.push('<button type="button" class="chip moves-btn" data-game="' + esc(g.id) + '" aria-expanded="' + open + '">' +

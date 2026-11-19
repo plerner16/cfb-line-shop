@@ -173,10 +173,10 @@
         var best = null;
         for (var n = 1; n <= MAX_DAYS; n++) {
           var at = nowMs - n * 864e5 + GRACE_MS;
-          var from = lineAt(game, k, m, "away", at + 1) || first;
+          var before = lineAt(game, k, m, "away", at + 1), from = before || first;
           var move = to.point - from.point;
           if (Math.abs(move) > n + 1e-9 && (!best || Math.abs(move) > Math.abs(best.move) + 1e-9)) {
-            best = { market: m, book: k, days: n, move: move, from: from, to: to, since: Math.max(from.t, nowMs - n * 864e5) };
+            best = { market: m, book: k, days: n, move: move, from: from, to: to, since: Math.max(from.t, nowMs - n * 864e5), opened: !before };
           }
         }
         if (best) out.push(best);
@@ -192,10 +192,44 @@
     return LS.shortTeam(awayFav ? game.away : game.home) + " " + LS.fmtSpread((s * m.from.point) || 0) + " → " + LS.fmtSpread((s * m.to.point) || 0);
   }
   function pointsText(x) { x = Math.abs(x); return LS.fmtNum(x) + (x === 1 ? " point" : " points"); }
+  // "in 3 days", or "since it opened Wed 5 PM" for a game posted within the window.
+  function spanText(m, fmtTime) {
+    return m.opened ? "since it opened " + fmtTime(m.from.t) : "in " + (m.days === 1 ? "a day" : m.days + " days");
+  }
+
+  // Every game's big moves right now, one group per game and market (its books together), biggest first.
+  // Each group is one phone alert and one row in the site's Big moves list.
+  function bigMoveGroups(hist, nowMs) {
+    var groups = [];
+    Object.keys((hist && hist.games) || {}).forEach(function (id) {
+      var game = hist.games[id], by = {};
+      bigMoves(game, null, nowMs).forEach(function (m) { (by[m.market] = by[m.market] || []).push(m); });
+      Object.keys(by).forEach(function (market) {
+        var moves = by[market].sort(function (a, b) { return Math.abs(b.move) - Math.abs(a.move); });
+        groups.push({ id: id, game: game, market: market, moves: moves });
+      });
+    });
+    return groups.sort(function (a, b) { return Math.abs(b.moves[0].move) - Math.abs(a.moves[0].move); });
+  }
+  // "Georgia −9½ → −14½", or "Ohio State @ Nebraska total 47½ → 41½".
+  function groupTitle(g) {
+    var top = g.moves[0];
+    return g.market === "total"
+      ? LS.shortTeam(g.game.away) + " @ " + LS.shortTeam(g.game.home) + " total " + LS.fmtNum(top.from.point) + " → " + LS.fmtNum(top.to.point)
+      : moveText(g.game, top);
+  }
+  // A move counts as new until it's been alerted (or marked seen) at a line within a point of where it is now.
+  function moveKey(id, m) { return id + ":" + m.market + ":" + m.book; }
+  function isNewMove(seen, id, m) {
+    var last = seen ? seen[moveKey(id, m)] : null;
+    return last == null || Math.abs(last - m.to.point) >= 1 - 1e-9;
+  }
+  function groupIsNew(seen, g) { return g.moves.some(function (m) { return isNewMove(seen, g.id, m); }); }
 
   var api = {
     KEEP_DAYS: KEEP_DAYS, COLS: COLS, MAX_DAYS: MAX_DAYS,
-    bigMoves: bigMoves, moveText: moveText, pointsText: pointsText,
+    bigMoves: bigMoves, moveText: moveText, pointsText: pointsText, spanText: spanText,
+    bigMoveGroups: bigMoveGroups, groupTitle: groupTitle, moveKey: moveKey, isNewMove: isNewMove, groupIsNew: groupIsNew,
     empty: empty, parse: parse, addSnapshot: addSnapshot, prune: prune, format: format,
     cell: cell, lineAt: lineAt, latest: latest, close: close, opened: opened, path: path, bestOf: bestOf,
     moved: moved, compare: compare

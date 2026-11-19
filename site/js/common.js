@@ -59,6 +59,15 @@
     historyListeners.forEach(function (fn) { fn(h); });
   }
 
+  // ---------- big moves marked seen ----------
+  // Kept by bigmoves.js; the board reads it to tell new big moves from ones already seen.
+  var seenMoves = {};
+  var seenListeners = [];
+  function setSeenMoves(map) {
+    seenMoves = map || {};
+    seenListeners.forEach(function (fn) { fn(seenMoves); });
+  }
+
   // ---------- GitHub ----------
   function token() { return (store.get("ls.ghToken") || "").trim(); }
   function gh(method, url, tok, body) {
@@ -167,6 +176,7 @@
     books: function () { return books; }, setBooks: setBooks, bookName: bookName, bookShort: bookShort,
     onBooks: function (fn) { bookListeners.push(fn); },
     history: function () { return history; }, setHistory: setHistory, onHistory: function (fn) { historyListeners.push(fn); },
+    seenMoves: function () { return seenMoves; }, setSeenMoves: setSeenMoves, onSeen: function (fn) { seenListeners.push(fn); },
     token: token, gh: gh, tokenProblem: tokenProblem,
     openConnect: openConnect, closeConnect: closeConnect, onDevice: function (fn) { deviceListeners.push(fn); },
     currentView: currentView, onView: function (fn) { viewListeners.push(fn); }
