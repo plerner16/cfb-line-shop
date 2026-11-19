@@ -11,12 +11,14 @@
 //   ODDS_API_KEY  the key from The Odds API (a repository secret)
 //   FORCE=true    refresh now, whatever the schedule says (the site's Refresh button, Run workflow)
 
-import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const HISTORY = require("../site/js/history.js");
+const LS = require("../site/js/lines.js");
 
 export const TZ = "America/Chicago";
 const WEEKDAY = ["8:00", "12:00", "17:00"];
@@ -43,6 +45,75 @@ export function loadBooks(path) {
   } catch {
     return DEFAULT_BOOKS;
   }
+}
+
+// Markets the site watches but you don't bet at (scripts/markets.json): prediction markets, exchanges
+// and overseas books. They ride along in the same request (the 10-bookmaker limit keeps it at
+// 3 credits), stay off the board, and feed the market alerts.
+export function loadMarkets(path) {
+  try {
+    const list = JSON.parse(readFileSync(path, "utf8"));
+    return (Array.isArray(list) ? list : []).filter((b) => b && typeof b.key === "string" && b.key.trim())
+      .map((b) => ({ key: b.key.trim(), name: String(b.name || b.key).trim(), short: String(b.short || b.name || b.key).trim() }));
+  } catch {
+    return [];
+  }
+}
+export const MAX_BOOKMAKERS = 10;
+
+// Splits one response: the board's books go to odds.json; the watched markets to their own files.
+export function splitEvents(events, books) {
+  const keep = new Set(books.map((b) => b.key));
+  return events
+    .map((ev) => ({ ev, own: (ev.bookmakers || []).filter((b) => keep.has(b.key)) }))
+    .filter(({ ev, own }) => own.length || !(ev.bookmakers || []).length)
+    .map(({ ev, own }) => ({ ...ev, bookmakers: own }));
+}
+
+// The markets' current lines (site/data/markets.json, one game per line) and, for the alerts, how their
+// spreads and totals moved (state/market-history.json). Returns what each market covered.
+export function recordMarkets({ events, now, markets, currentFile, historyFile }) {
+  const t = Math.round(now.getTime() / 1000);
+  const coverage = {};
+  markets.forEach((m) => { coverage[m.key] = { games: 0, spreads: 0, totals: 0, moneylines: 0 }; });
+  const games = {};
+  for (const g of LS.normalize(events, now, markets)) {
+    if (g.live) continue;
+    const lines = {};
+    for (const k of g.bookKeys) {
+      const l = g.books[k];
+      if (!l) continue;
+      const row = HISTORY.rowOf(t, l);
+      if (row.slice(1).every((x) => x === null)) continue;
+      lines[k] = row;
+      const c = coverage[k];
+      c.games++;
+      if (row[1] != null) c.spreads++;
+      if (row[5] != null) c.totals++;
+      if (row[8] != null) c.moneylines++;
+    }
+    if (Object.keys(lines).length) games[g.id] = { start: g.start.toISOString(), away: g.away, home: g.home, lines };
+  }
+  const ids = Object.keys(games).sort((a, b) => (games[a].start < games[b].start ? -1 : games[a].start > games[b].start ? 1 : a < b ? -1 : 1));
+  const head = { updatedAt: now.toISOString(), books: markets, coverage };
+  const text = JSON.stringify(head).slice(0, -1) + ',"games":{' +
+    (ids.length ? "\n" + ids.map((id) => JSON.stringify(id) + ":" + JSON.stringify(games[id])).join(",\n") + "\n" : "") + "}}\n";
+  if (currentFile) writeFileSync(currentFile, text);
+  console.log("Markets: " + markets.map((m) => {
+    const c = coverage[m.key];
+    return `${m.name} ${c.games} games (${c.spreads} spreads, ${c.totals} totals, ${c.moneylines} moneylines)`;
+  }).join("; "));
+
+  if (historyFile) {
+    let hist;
+    try { hist = HISTORY.parse(readFileSync(historyFile, "utf8")); } catch { hist = HISTORY.empty(); }
+    const added = HISTORY.addSnapshot(hist, events, now, markets, true);
+    HISTORY.prune(hist, now);
+    mkdirSync(dirname(historyFile), { recursive: true });
+    writeFileSync(historyFile, HISTORY.format(hist));
+    console.log(`Market history: ${added} new lines.`);
+  }
+  return coverage;
 }
 
 export function localParts(date) {
@@ -151,7 +222,7 @@ export function recordHistory(historyFile, events, now, books) {
   return true;
 }
 
-export async function run({ file, booksFile, historyFile = null, now = new Date(), force = false, key = "" }) {
+export async function run({ file, booksFile, historyFile = null, marketsFile = null, marketsOut = null, marketHistoryFile = null, now = new Date(), force = false, key = "" }) {
   let prev = {};
   try { prev = JSON.parse(readFileSync(file, "utf8")) || {}; } catch { prev = {}; }
 
@@ -160,7 +231,9 @@ export async function run({ file, booksFile, historyFile = null, now = new Date(
   if (!plan.go) return false;
 
   const books = loadBooks(booksFile);
-  const result = key ? await fetchOdds(key, books) : {
+  const markets = (marketsFile ? loadMarkets(marketsFile) : []).filter((m) => !books.some((b) => b.key === m.key))
+    .slice(0, Math.max(0, MAX_BOOKMAKERS - books.length));
+  const result = key ? await fetchOdds(key, books.concat(markets)) : {
     error: "There's no Odds API key yet. Add it on GitHub as a repository secret named ODDS_API_KEY."
   };
 
@@ -181,15 +254,19 @@ export async function run({ file, booksFile, historyFile = null, now = new Date(
       events: Array.isArray(prev.events) ? prev.events : []
     };
   } else {
-    console.log(`Got ${result.events.length} games.`);
+    const events = markets.length ? splitEvents(result.events, books) : result.events;
+    console.log(`Got ${events.length} games.`);
     next = {
       updatedAt: now.toISOString(),
       creditsRemaining: result.remaining,
       lastError: null,
       books,
-      events: result.events
+      events
     };
-    if (historyFile) recordHistory(historyFile, result.events, now, books);
+    if (historyFile) recordHistory(historyFile, events, now, books);
+    if (markets.length && (marketsOut || marketHistoryFile)) {
+      recordMarkets({ events: result.events, now, markets, currentFile: marketsOut, historyFile: marketHistoryFile });
+    }
   }
   writeFileSync(file, JSON.stringify(next) + "\n");
   return true;
@@ -203,6 +280,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     file,
     booksFile,
     historyFile,
+    marketsFile: fileURLToPath(new URL("./markets.json", import.meta.url)),
+    marketsOut: fileURLToPath(new URL("../site/data/markets.json", import.meta.url)),
+    marketHistoryFile: fileURLToPath(new URL("../state/market-history.json", import.meta.url)),
     force: process.env.FORCE === "true",
     key: (process.env.ODDS_API_KEY || "").trim()
   });

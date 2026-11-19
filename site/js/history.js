@@ -22,7 +22,8 @@
     return [t, v(sa, "point"), v(sa, "price"), v(sh, "point"), v(sh, "price"), total, v(ov, "price"), v(un, "price"),
       v(lines.ml.away, "price"), v(lines.ml.home, "price")];
   }
-  function sameRow(a, b) {
+  function sameRow(a, b, pointsOnly) {
+    if (pointsOnly) return a[1] === b[1] && a[3] === b[3] && a[5] === b[5];
     for (var i = 1; i < a.length; i++) if (a[i] !== b[i]) return false;
     return true;
   }
@@ -35,7 +36,8 @@
   }
 
   // Adds one refresh. Games that have kicked off are skipped: in-game lines aren't the close.
-  function addSnapshot(hist, events, at, books) {
+  // pointsOnly: a new row only when a spread or total number changes (for the busy exchange markets).
+  function addSnapshot(hist, events, at, books, pointsOnly) {
     var t = Math.round(at.getTime() / 1000), added = 0;
     LS.normalize(events, at, books).forEach(function (g) {
       if (g.live) return;
@@ -47,7 +49,7 @@
         if (row.slice(1).every(function (x) { return x === null; })) return;
         var list = h.lines[k] || (h.lines[k] = []);
         var last = list[list.length - 1];
-        if (last && (last[0] >= t || sameRow(last, row))) return;
+        if (last && (last[0] >= t || sameRow(last, row, pointsOnly))) return;
         list.push(row);
         added++;
       });
@@ -230,7 +232,7 @@
     KEEP_DAYS: KEEP_DAYS, COLS: COLS, MAX_DAYS: MAX_DAYS,
     bigMoves: bigMoves, moveText: moveText, pointsText: pointsText, spanText: spanText,
     bigMoveGroups: bigMoveGroups, groupTitle: groupTitle, moveKey: moveKey, isNewMove: isNewMove, groupIsNew: groupIsNew,
-    empty: empty, parse: parse, addSnapshot: addSnapshot, prune: prune, format: format,
+    empty: empty, parse: parse, addSnapshot: addSnapshot, prune: prune, format: format, rowOf: rowOf,
     cell: cell, lineAt: lineAt, latest: latest, close: close, opened: opened, path: path, bestOf: bestOf,
     moved: moved, compare: compare
   };

@@ -79,6 +79,7 @@ jobs:
           git add site/data/odds.json site/data/scores.json site/data/weather.json
           if [ -f site/data/history.json ]; then git add site/data/history.json; fi
           if [ -f state/line-alerts.json ]; then git add state/line-alerts.json; fi
+          for f in site/data/markets.json state/market-history.json; do if [ -f "$f" ]; then git add "$f"; fi; done
           if [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then msg="Refresh lines";
           elif [ "${{ steps.scores.outputs.changed }}" = "true" ]; then msg="Check final scores";
           elif [ "${{ steps.alerts.outputs.changed }}" = "true" ]; then msg="Line alerts";

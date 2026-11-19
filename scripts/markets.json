@@ -1,0 +1,10 @@
+[
+  { "key": "pinnacle", "name": "Pinnacle", "short": "PIN" },
+  { "key": "betonlineag", "name": "BetOnline", "short": "BOL" },
+  { "key": "kalshi", "name": "Kalshi", "short": "KAL" },
+  { "key": "polymarket", "name": "Polymarket", "short": "POLY" },
+  { "key": "novig", "name": "Novig", "short": "NOV" },
+  { "key": "prophetx", "name": "ProphetX", "short": "PX" },
+  { "key": "betfair_ex_uk", "name": "Betfair Exchange", "short": "BF" },
+  { "key": "matchbook", "name": "Matchbook", "short": "MB" }
+]
