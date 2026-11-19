@@ -66,7 +66,7 @@ The same request also pulls lines you don't bet: Pinnacle, BetOnline, Kalshi, Po
 `scripts/market-alerts.mjs` sends a second ntfy channel, your topic name plus `-markets`, after each refresh:
 
 - **Stale line:** FanDuel or DraftKings is 1½ points or more better than the markets' consensus, the median of the markets that have the game (at least four, leaving out any far off the rest).
-- **Market move:** that consensus moved more than 1 point in a day, 2 in two days, and so on up to a week.
+- **Market move:** that consensus moved more than 1 point in a day, 2 in two days, and so on up to a week. A book that hasn't followed goes in the same alert: "Market move: Georgia −11 → −13½ · FanDuel still −11½".
 
 Each is its own alert, sent once. A stale line alerts again if the gap grows another point, or if it closes and opens again later; a market move if the consensus goes another point. Spreads and totals only. What's been sent is kept in `state/market-alerts.json`. The thresholds are `STALE_POINTS` and `MIN_MARKETS` at the top of the script.
 

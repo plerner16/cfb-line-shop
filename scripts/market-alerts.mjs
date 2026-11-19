@@ -5,7 +5,8 @@
 //                (the median of the markets that have the game, leaving out any far off the rest;
 //                at least four markets, so a thinly traded game doesn't set it off).
 //   Market move  the consensus moved more than N points in N days (1½+ in a day, 2½+ in two days,
-//                and so on up to a week), the same rule as the line alerts.
+//                and so on up to a week), the same rule as the line alerts. A book that hasn't followed
+//                the move goes in the same alert: "Market move: Georgia −11 → −13½ · FanDuel still −11½".
 //
 // Each one is its own alert, sent once. A stale line alerts again if the gap grows another point, or
 // if it closes and opens again; a market move if the consensus goes another point. What's been sent
@@ -122,23 +123,34 @@ export function describe(a, { odds, markets }) {
       click
     };
   }
-  const fake = { market: a.market, from: { point: a.from }, to: { point: a.to } };
+  // A market move reads from the side the markets moved toward, with your books' number for that side.
+  const side = lagSide(a);
+  const team = a.market === "spread" ? LS.shortTeam(side === "away" ? game.away : game.home) + " " : "";
+  const val = (awayPoint) => (a.market === "total" ? LS.fmtNum(awayPoint) : LS.fmtSpread(sideNum(awayPoint, side)));
   const label = a.market === "total"
-    ? `${LS.shortTeam(game.away)} @ ${LS.shortTeam(game.home)} total ${LS.fmtNum(a.from)} → ${LS.fmtNum(a.to)}`
-    : H.moveText(game, fake);
-  const list = marketList(a.mg.lines, a.market, mbooks);
-  const yoursNow = [];
+    ? `${LS.shortTeam(game.away)} @ ${LS.shortTeam(game.home)} total ${val(a.from)} → ${val(a.to)}`
+    : `${team}${val(a.from)} → ${val(a.to)}`;
+  const behind = (a.behind || []).slice().sort((x, y) => y.gap - x.gap);
+  const lines = [`The markets moved ${pts(a.move)} in ${a.days === 1 ? "a day" : a.days + " days"}, to ${val(a.to)}.`];
+  behind.forEach((s) => lines.push(`${nameOf(books, s.book)} still has ${team}${sideLine(a.market, side, s.point)}${s.price != null ? " " + LS.fmtPrice(s.price) : ""}, ${pts(s.gap)} better than the markets.`));
   const og = LS.normalize((odds.events || []).filter((e) => e.id === a.id), new Date(), books)[0];
   if (og) for (const b of og.bookKeys) {
+    if (behind.some((s) => s.book === b)) continue;
     const o = og.books[b] && og.books[b][a.market] && og.books[b][a.market].away;
-    if (o && typeof o.point === "number") yoursNow.push(`${nameOf(books, b)} ${a.market === "total" ? LS.fmtNum(o.point) : LS.fmtSpread(o.point)}`);
+    if (o && typeof o.point === "number") lines.push(`${nameOf(books, b)}: ${team}${sideLine(a.market, side, o.point)}`);
   }
+  lines.push(`Markets: ${marketList(a.mg.lines, a.market, mbooks, side).text}`, matchup);
   return {
-    title: `Market move: ${label}`,
-    message: `The markets moved ${pts(a.move)} in ${a.days === 1 ? "a day" : a.days + " days"}.\nNow: ${list.text}` +
-      (yoursNow.length ? `\nYour books${a.market === "spread" ? " (" + LS.shortTeam(game.away) + ")" : ""}: ${yoursNow.join(" · ")}` : "") + `\n${matchup}`,
+    title: `Market move: ${label}` + (behind.length ? ` · ${nameOf(books, behind[0].book)} still ${a.market === "total" ? LS.fmtNum(behind[0].point) : LS.fmtSpread(sideNum(behind[0].point, side))}` : ""),
+    message: lines.join("\n"),
     click
   };
+}
+
+// The side the markets moved toward: on a spread, the team whose number the markets moved up for;
+// on a total, the Over when it went up. A book that hasn't followed is better on that side.
+export function lagSide(a) {
+  return a.market === "spread" ? (a.move < 0 ? "away" : "home") : (a.move > 0 ? "away" : "home");
 }
 
 export async function check({ odds, markets, history, state, nowMs, send }) {
@@ -169,9 +181,19 @@ export async function check({ odds, markets, history, state, nowMs, send }) {
     state.startedAt = new Date(nowMs).toISOString();
   }
 
-  const fresh = [...stale, ...moves].filter((a) => isNew(state.sent, a));
-  for (const a of fresh.slice(0, MAX_PER_RUN)) {
-    if (await trySend(describe(a, { odds, markets }))) state.sent[keyOf(a)] = a.kind === "stale" ? a.gap : a.to;
+  // A market move and the books that haven't followed it go out as one alert ("…· FanDuel still −11½").
+  const queue = [], covered = new Set();
+  for (const m of moves) {
+    if (!isNew(state.sent, m)) continue;
+    m.behind = stale.filter((x) => x.id === m.id && x.market === m.market && x.side === lagSide(m));
+    m.behind.forEach((x) => covered.add(keyOf(x)));
+    queue.push(m);
+  }
+  for (const x of stale) if (!covered.has(keyOf(x)) && isNew(state.sent, x)) queue.push(x);
+  for (const a of queue.slice(0, MAX_PER_RUN)) {
+    if (!(await trySend(describe(a, { odds, markets })))) continue;
+    state.sent[keyOf(a)] = a.kind === "stale" ? a.gap : a.to;
+    (a.behind || []).forEach((x) => { state.sent[keyOf(x)] = x.gap; });
   }
   return { state, sent: out, error };
 }
