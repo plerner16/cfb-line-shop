@@ -58,6 +58,14 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: node scripts/line-alerts.mjs
 
+      - name: Send market alerts
+        id: marketalerts
+        if: github.event_name != 'push'
+        continue-on-error: true
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: node scripts/market-alerts.mjs
+
       - name: Check final scores if it's time
         id: scores
         if: github.event_name != 'push'
@@ -72,17 +80,17 @@ jobs:
         run: node scripts/refresh-weather.mjs
 
       - name: Save the new lines, scores and weather
-        if: steps.fetch.outputs.changed == 'true' || steps.scores.outputs.changed == 'true' || steps.weather.outputs.changed == 'true' || steps.alerts.outputs.changed == 'true'
+        if: steps.fetch.outputs.changed == 'true' || steps.scores.outputs.changed == 'true' || steps.weather.outputs.changed == 'true' || steps.alerts.outputs.changed == 'true' || steps.marketalerts.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/data/odds.json site/data/scores.json site/data/weather.json
           if [ -f site/data/history.json ]; then git add site/data/history.json; fi
           if [ -f state/line-alerts.json ]; then git add state/line-alerts.json; fi
-          for f in site/data/markets.json state/market-history.json; do if [ -f "$f" ]; then git add "$f"; fi; done
+          for f in site/data/markets.json state/market-history.json state/market-alerts.json; do if [ -f "$f" ]; then git add "$f"; fi; done
           if [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then msg="Refresh lines";
           elif [ "${{ steps.scores.outputs.changed }}" = "true" ]; then msg="Check final scores";
-          elif [ "${{ steps.alerts.outputs.changed }}" = "true" ]; then msg="Line alerts";
+          elif [ "${{ steps.alerts.outputs.changed }}" = "true" ] || [ "${{ steps.marketalerts.outputs.changed }}" = "true" ]; then msg="Line alerts";
           else msg="Refresh weather"; fi
           git commit -m "$msg" || exit 0
           for attempt in 1 2 3; do

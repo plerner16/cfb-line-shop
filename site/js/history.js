@@ -228,8 +228,29 @@
   }
   function groupIsNew(seen, g) { return g.moves.some(function (m) { return isNewMove(seen, g.id, m); }); }
 
+  // ---------- the markets' consensus ----------
+  // The median of several markets' spreads (the away side's number) or totals, leaving out any that are
+  // far off the rest (a market listing an odd line as its main one). Needs three markets that agree.
+  function median(v) { var n = v.length; return n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2; }
+  function consensus(points, market) {
+    var vals = points.filter(function (x) { return typeof x === "number" && isFinite(x); }).sort(function (a, b) { return a - b; });
+    if (vals.length < 3) return null;
+    var mid = median(vals), lim = market === "total" ? 10 : 7;
+    var kept = vals.filter(function (x) { return Math.abs(x - mid) <= lim; });
+    if (kept.length < 3) return null;
+    return { point: Math.round(median(kept) * 2) / 2, n: kept.length, lo: kept[0], hi: kept[kept.length - 1] };
+  }
+  // Each market's current number for one game ({ key: row } from markets.json), with the consensus.
+  function marketLines(lines, market) {
+    var col = COLS[market].away[0], list = [];
+    Object.keys(lines || {}).forEach(function (k) { var v = lines[k][col]; if (v != null) list.push({ book: k, point: v }); });
+    var c = consensus(list.map(function (x) { return x.point; }), market);
+    if (c) list.forEach(function (x) { x.outlier = Math.abs(x.point - c.point) > (market === "total" ? 10 : 7); });
+    return { list: list, consensus: c };
+  }
+
   var api = {
-    KEEP_DAYS: KEEP_DAYS, COLS: COLS, MAX_DAYS: MAX_DAYS,
+    KEEP_DAYS: KEEP_DAYS, COLS: COLS, MAX_DAYS: MAX_DAYS, consensus: consensus, marketLines: marketLines,
     bigMoves: bigMoves, moveText: moveText, pointsText: pointsText, spanText: spanText,
     bigMoveGroups: bigMoveGroups, groupTitle: groupTitle, moveKey: moveKey, isNewMove: isNewMove, groupIsNew: groupIsNew,
     empty: empty, parse: parse, addSnapshot: addSnapshot, prune: prune, format: format, rowOf: rowOf,

@@ -99,6 +99,8 @@
         if (!data || !data.games || data.updatedAt === state.historyStamp) return;
         state.historyStamp = data.updatedAt;
         state.history = data;
+        marketsReq = null; // a new refresh: the markets' lines are new too
+        if (Object.keys(state.movesOpen).some(function (k) { return state.movesOpen[k]; })) loadMarketsData();
         A.setHistory(data);
         if (state.source !== "loading") renderBoard();
         openLinkedGame();
@@ -128,6 +130,7 @@
       state.q = ""; $("team-search").value = "";
     }
     state.movesOpen[id] = true;
+    loadMarketsData();
     render();
     var btn = $("board").querySelector('.moves-btn[data-game="' + id + '"]');
     if (btn) btn.closest(".game").scrollIntoView({ block: "start" });
@@ -135,7 +138,7 @@
   readLink();
   window.addEventListener("hashchange", function () { readLink(); openLinkedGame(); });
   A.showGame = showGame;
-  A.onSeen(function () { if (state.source === "live") renderBoard(); });
+  A.onSeen(function () { if (state.source === "live") renderKeepingFocus(); });
 
   var inflight = null;
   // Resolves once the newest odds.json has been read (or the read failed).
@@ -532,6 +535,40 @@
       (open ? '<span class="was">opened ' + esc(moveValue(market, open.o)) + "</span>" : "") + "</button></td>";
   }
 
+  // The watched markets' lines right now (data/markets.json), shown under Line moves. Loaded the first
+  // time a game's moves are opened, and again after each refresh.
+  var marketsReq = null;
+  function loadMarketsData() {
+    if (marketsReq) return;
+    marketsReq = fetch("data/markets.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.games) { state.marketsData = d; renderKeepingFocus(); } }, function () { marketsReq = null; });
+  }
+  // Re-draws the board without losing your place on a Line moves button.
+  function renderKeepingFocus() {
+    var a = document.activeElement;
+    var id = a && a.classList && a.classList.contains("moves-btn") ? a.dataset.game : null;
+    renderBoard();
+    if (!id) return;
+    var again = $("board").querySelector('.moves-btn[data-game="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+    if (again) again.focus({ preventScroll: true });
+  }
+  function marketsHtml(g) {
+    var d = state.marketsData, mg = d && d.games && d.games[g.id];
+    if (!mg || !H.marketLines) return "";
+    var short = function (k) { return ((d.books || []).filter(function (b) { return b.key === k; })[0] || {}).short || k; };
+    var parts = [["spread", "Spread · " + LS.shortTeam(g.away)], ["total", "Total"]].map(function (s) {
+      var ml = H.marketLines(mg.lines, s[0]);
+      var shown = ml.list.filter(function (x) { return !x.outlier; });
+      if (!shown.length) return "";
+      var val = function (x) { return s[0] === "spread" ? LS.fmtSpread(x) : LS.fmtNum(x); };
+      return '<div class="mv-mkt mv-markets" data-m="' + s[0] + '"><h4>' + esc(s[1]) + (ml.consensus ? " · median " + esc(val(ml.consensus.point)) : "") + "</h4><p>" +
+        shown.map(function (x) { return "<span>" + esc(short(x.book)) + " <b>" + esc(val(x.point)) + "</b></span>"; }).join("") + "</p></div>";
+    }).join("");
+    return parts ? '<p class="mv-note">Markets you don\'t bet (prediction markets, exchanges and overseas books), as of ' +
+      esc(moveTime.format(new Date(d.updatedAt))) + ":</p>" + parts : "";
+  }
+
   // Under the game: every change at each book, at the refresh that first saw it.
   function thinPath(market, list) {
     if (market !== "ml" || list.length < 3) return list;
@@ -556,7 +593,7 @@
       return books ? '<div class="mv-mkt" data-m="' + m + '"><h4>' + esc(s[1]) + "</h4>" + books + "</div>" : "";
     }).join("");
     return '<div class="moves"><p class="mv-note">Every change at each book since ' + esc(moveTime.format(new Date(first))) +
-      ", as of each refresh." + (g.live ? "" : " The last one before kickoff is the closing line.") + "</p>" + body + "</div>";
+      ", as of each refresh." + (g.live ? "" : " The last one before kickoff is the closing line.") + "</p>" + body + marketsHtml(g) + "</div>";
   }
 
   function sideLabel(g, market, row, o) {
@@ -777,6 +814,7 @@
     if (mv) {
       var id = mv.dataset.game;
       state.movesOpen[id] = !state.movesOpen[id];
+      if (state.movesOpen[id]) loadMarketsData();
       renderBoard();
       var again = $("board").querySelector('.moves-btn[data-game="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
       if (again) again.focus();

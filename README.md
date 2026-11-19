@@ -59,6 +59,17 @@ After each refresh, `scripts/line-alerts.mjs` checks the line history for big mo
 
 Setup: install the ntfy app, subscribe to your private topic name, and save that name as the repository secret `NTFY_TOPIC` (Settings → Secrets and variables → Actions). Without the secret, nothing is sent. The first run sends a "Line alerts are on" message (it links to the Big moves list), then an alert for each move already under way. What's been sent is kept in `state/line-alerts.json`, which isn't part of the published site. Anyone who knows the topic name can read the alerts or send to it, so keep it hard to guess.
 
+## Market alerts
+
+The same request also pulls lines you don't bet: Pinnacle, BetOnline, Kalshi, Polymarket, Novig, ProphetX, Betfair Exchange and Matchbook (`scripts/markets.json`; ten bookmakers in all still cost 3 credits). They stay off the board. Their current lines are in `site/data/markets.json` and show under **Line moves**; how their spreads and totals moved is kept in `state/market-history.json`. Betfair Exchange only has moneylines for college games, so it doesn't count toward spreads and totals.
+
+`scripts/market-alerts.mjs` sends a second ntfy channel, your topic name plus `-markets`, after each refresh:
+
+- **Stale line:** FanDuel or DraftKings is 1½ points or more better than the markets' consensus, the median of the markets that have the game (at least four, leaving out any far off the rest).
+- **Market move:** that consensus moved more than 1 point in a day, 2 in two days, and so on up to a week.
+
+Each is its own alert, sent once. A stale line alerts again if the gap grows another point, or if it closes and opens again later; a market move if the consensus goes another point. Spreads and totals only. What's been sent is kept in `state/market-alerts.json`. The thresholds are `STALE_POINTS` and `MIN_MARKETS` at the top of the script.
+
 ## The ledger
 
 Bets are saved in `bets.json` in the private repository `plerner16/cfb-bet-ledger`, one bet per line, so every connected device sees the same ledger and every change is in that repository's history. This repository (the site and the lines) stays public; it never holds your bets. A device that isn't connected sees the lines but not the ledger.
