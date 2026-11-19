@@ -4,7 +4,8 @@ on:
   # Every hour, every day. The weather updates on every run (it's free). Lines only refresh at
   # 8am, noon and 5pm Central on weekdays and 9am, 1pm and 5pm on Saturday (scripts/refresh-odds.mjs),
   # each one also added to the line history (site/data/history.json), and final scores are checked
-  # once each morning from 5am, Tuesday through Saturday (scripts/refresh-scores.mjs).
+  # once each morning from 5am, Tuesday through Saturday (scripts/refresh-scores.mjs). After each
+  # refresh, big line moves go to your phone through ntfy (scripts/line-alerts.mjs).
   schedule:
     - cron: "7 * * * *"
   # Started from outside: the site's Refresh button (force: true, lines now), the outside timer at
@@ -49,6 +50,14 @@ jobs:
           FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
         run: node scripts/refresh-odds.mjs
 
+      - name: Send alerts for big line moves
+        id: alerts
+        if: github.event_name != 'push'
+        continue-on-error: true  # an alert problem never holds up the lines or weather
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: node scripts/line-alerts.mjs
+
       - name: Check final scores if it's time
         id: scores
         if: github.event_name != 'push'
@@ -63,14 +72,16 @@ jobs:
         run: node scripts/refresh-weather.mjs
 
       - name: Save the new lines, scores and weather
-        if: steps.fetch.outputs.changed == 'true' || steps.scores.outputs.changed == 'true' || steps.weather.outputs.changed == 'true'
+        if: steps.fetch.outputs.changed == 'true' || steps.scores.outputs.changed == 'true' || steps.weather.outputs.changed == 'true' || steps.alerts.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/data/odds.json site/data/scores.json site/data/weather.json
           if [ -f site/data/history.json ]; then git add site/data/history.json; fi
+          if [ -f state/line-alerts.json ]; then git add state/line-alerts.json; fi
           if [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then msg="Refresh lines";
           elif [ "${{ steps.scores.outputs.changed }}" = "true" ]; then msg="Check final scores";
+          elif [ "${{ steps.alerts.outputs.changed }}" = "true" ]; then msg="Line alerts";
           else msg="Refresh weather"; fi
           git commit -m "$msg" || exit 0
           for attempt in 1 2 3; do

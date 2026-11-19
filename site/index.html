@@ -202,6 +202,8 @@ select.input { padding-right: 6px; }
 }
 .chip.flag { color: var(--flag); border-color: var(--flag); background: var(--flag-soft); }
 .chip.live { color: var(--accent); border-color: var(--accent); }
+.chip.big { color: var(--hi-ink); border-color: var(--hi); background: var(--hi); }
+.game { scroll-margin-top: 12px; }
 .moves-btn { background: transparent; cursor: pointer; color: var(--ink); }
 .moves-btn:hover { background: var(--bg); }
 .moves-btn[aria-expanded="true"] { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
@@ -494,6 +496,8 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
         <dd>The books disagree on this bet, and this is the better side of that. No highlight means the books have the same line, so it doesn't matter where you bet it. On a computer, hover over a price to see every book's line.</dd>
         <dt>Opened</dt>
         <dd>Under a line that has moved: where the best line was when the week's lines first came in. Press Line moves on a game to see every change at each book and when the site saw it. The last line before kickoff is the closing line, which the Ledger tab compares your bets with.</dd>
+        <dt>Big move</dt>
+        <dd>A spread or total that moved more than 1 point in a day, 2 in two days, and so on up to 7 in a week, at either book. Hover or long-press the tag to see the move. With the ntfy app set up, each one also comes to your phone as an alert after the refresh that spots it.</dd>
         <dt>Weather</dt>
         <dd>The forecast at the stadium for kickoff and the next three hours: the temperature, the sky or the highest chance of rain or snow, and the strongest wind. Wind matters most for totals and kicking, so games with 15 mph wind or 25 mph gusts are flagged Windy. Dome means indoors. Hover over the forecast on a computer to see the stadium.</dd>
         <dt>Middle</dt>
@@ -556,12 +560,12 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
   <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=9" defer></script>
-<script src="js/sample.js?v=9" defer></script>
-<script src="js/history.js?v=9" defer></script>
-<script src="js/ledger-core.js?v=9" defer></script>
-<script src="js/common.js?v=9" defer></script>
-<script src="js/ledger.js?v=9" defer></script>
-<script src="js/board.js?v=9" defer></script>
+<script src="js/lines.js?v=10" defer></script>
+<script src="js/sample.js?v=10" defer></script>
+<script src="js/history.js?v=10" defer></script>
+<script src="js/ledger-core.js?v=10" defer></script>
+<script src="js/common.js?v=10" defer></script>
+<script src="js/ledger.js?v=10" defer></script>
+<script src="js/board.js?v=10" defer></script>
 </body>
 </html>

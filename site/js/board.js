@@ -34,6 +34,7 @@
     state.source = source;
     state.loadedAt = at || now;
     render();
+    if (source === "live") openLinkedGame();
   }
 
   function showNotice(text) { var n = $("notice"); n.textContent = text; n.hidden = false; }
@@ -100,8 +101,35 @@
         state.history = data;
         A.setHistory(data);
         if (state.source !== "loading") renderBoard();
+        openLinkedGame();
       }, function () { /* no history this time; the board works without it */ });
   }
+
+  // A line alert links to #game=<id>: show that game with its line moves open.
+  var linkedGame = null;
+  function readLink() {
+    var m = location.hash.match(/^#game=([A-Za-z0-9_-]+)$/);
+    if (m) linkedGame = m[1];
+  }
+  function openLinkedGame() {
+    if (!linkedGame || state.source !== "live" || !state.history) return;
+    var id = linkedGame;
+    linkedGame = null;
+    var item = state.games.filter(function (it) { return it.g.id === id; })[0];
+    try { history.replaceState(null, "", location.pathname + location.search + "#lines"); } catch (e) { /* fine */ }
+    if (!item) return; // already kicked off and gone from the board
+    if (windowGames().indexOf(item) < 0) state.windowMode = "all";
+    if (visibleGames().indexOf(item) < 0) {
+      state.onlyDiff = false; $("only-diff").checked = false;
+      state.q = ""; $("team-search").value = "";
+    }
+    state.movesOpen[id] = true;
+    render();
+    var btn = $("board").querySelector('.moves-btn[data-game="' + id + '"]');
+    if (btn) btn.closest(".game").scrollIntoView({ block: "start" });
+  }
+  readLink();
+  window.addEventListener("hashchange", function () { readLink(); openLinkedGame(); });
 
   var inflight = null;
   // Resolves once the newest odds.json has been read (or the read failed).
@@ -599,6 +627,13 @@
     if (isWindy(weatherFor(g))) chips.push('<span class="chip flag">Windy</span>');
 
     var hist = historyFor(g), open = hist && !!state.movesOpen[g.id];
+    var big = hist && !g.live ? H.bigMoves(hist, g.bookKeys, Date.now()) : [];
+    if (big.length) {
+      var why = big.map(function (m) {
+        return H.moveText(g, m) + " at " + A.bookName(m.book) + ", " + H.pointsText(m.move) + " since " + moveTime.format(new Date(m.since));
+      }).join(". ");
+      chips.push('<span class="chip big" title="' + esc(why + ". More than 1 point in a day, 2 in two days, and so on, is a big move.") + '">Big move</span>');
+    }
     if (hist) {
       chips.push('<button type="button" class="chip moves-btn" data-game="' + esc(g.id) + '" aria-expanded="' + open + '">' +
         (open ? "Hide moves" : "Line moves") + "</button>");

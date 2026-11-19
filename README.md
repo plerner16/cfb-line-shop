@@ -53,6 +53,12 @@ Press **Refresh** on the site to refresh right now (3 credits), or go to **Actio
 
 GitHub's own scheduler skips many runs when it's busy (it rarely ran this job in the morning), so a free timer at cron-job.org starts it at :05 every hour with `{"ref":"main","inputs":{"force":false}}`, which behaves like a scheduled run. GitHub's schedule stays on as a backup; extra runs do nothing extra.
 
+## Line alerts
+
+After each refresh, `scripts/line-alerts.mjs` checks the line history for big moves: a spread or total that moved more than 1 point in a day, 2 in two days, and so on up to 7 in a week, at either book (compared with that book's line then, or its first line if the game was posted since). Moneylines aren't checked. Each one is sent to your phone through [ntfy](https://ntfy.sh), a free notification app, and tapping it opens the game on the site with its line moves showing. A game and market alerts again only after the line moves at least another point. The board marks the same games with a **Big move** tag.
+
+Setup: install the ntfy app, subscribe to your private topic name, and save that name as the repository secret `NTFY_TOPIC` (Settings → Secrets and variables → Actions). Without the secret, nothing is sent. The first run sends one "Line alerts are on" message listing what has already moved. What's been sent is kept in `state/line-alerts.json`, which isn't part of the published site. Anyone who knows the topic name can read the alerts or send to it, so keep it hard to guess.
+
 ## The ledger
 
 Bets are saved in `bets.json` in the private repository `plerner16/cfb-bet-ledger`, one bet per line, so every connected device sees the same ledger and every change is in that repository's history. This repository (the site and the lines) stays public; it never holds your bets. A device that isn't connected sees the lines but not the ledger.

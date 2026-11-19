@@ -155,8 +155,47 @@
     return { dir: dir, points: points, cents: cents };
   }
 
+  // ---------- big moves ----------
+  // A spread or total that moved more than N points in N days (1½+ in a day, 2½+ in two days, and so
+  // on up to a week), at one book. The line "N days ago" is the one in effect then (allowing 45 minutes
+  // for a refresh that ran a little late), or the book's first line if the game was posted since.
+  // Returns [{ market, book, days, move, from, to, since }], the biggest qualifying move per book and market.
+  var MAX_DAYS = 7, GRACE_MS = 45 * 60 * 1000;
+  function bigMoves(game, bookKeys, nowMs) {
+    var out = [];
+    if (!game || !game.lines || !(Date.parse(game.start) > nowMs)) return out;
+    ["spread", "total"].forEach(function (m) {
+      (bookKeys || Object.keys(game.lines)).forEach(function (k) {
+        var to = latest(game, k, m, "away");
+        if (!to) return;
+        var first = null, rows = game.lines[k] || [];
+        for (var i = 0; i < rows.length && !first; i++) first = cell(rows[i], m, "away");
+        var best = null;
+        for (var n = 1; n <= MAX_DAYS; n++) {
+          var at = nowMs - n * 864e5 + GRACE_MS;
+          var from = lineAt(game, k, m, "away", at + 1) || first;
+          var move = to.point - from.point;
+          if (Math.abs(move) > n + 1e-9 && (!best || Math.abs(move) > Math.abs(best.move) + 1e-9)) {
+            best = { market: m, book: k, days: n, move: move, from: from, to: to, since: Math.max(from.t, nowMs - n * 864e5) };
+          }
+        }
+        if (best) out.push(best);
+      });
+    });
+    return out;
+  }
+  // "Western Michigan −13½ → −15" (a spread, from the favorite's side) or "Total 46½ → 49".
+  function moveText(game, m) {
+    if (m.market === "total") return "Total " + LS.fmtNum(m.from.point) + " → " + LS.fmtNum(m.to.point);
+    var awayFav = m.to.point < 0 || (m.to.point === 0 && m.from.point < 0);
+    var s = awayFav ? 1 : -1;
+    return LS.shortTeam(awayFav ? game.away : game.home) + " " + LS.fmtSpread((s * m.from.point) || 0) + " → " + LS.fmtSpread((s * m.to.point) || 0);
+  }
+  function pointsText(x) { x = Math.abs(x); return LS.fmtNum(x) + (x === 1 ? " point" : " points"); }
+
   var api = {
-    KEEP_DAYS: KEEP_DAYS, COLS: COLS,
+    KEEP_DAYS: KEEP_DAYS, COLS: COLS, MAX_DAYS: MAX_DAYS,
+    bigMoves: bigMoves, moveText: moveText, pointsText: pointsText,
     empty: empty, parse: parse, addSnapshot: addSnapshot, prune: prune, format: format,
     cell: cell, lineAt: lineAt, latest: latest, close: close, opened: opened, path: path, bestOf: bestOf,
     moved: moved, compare: compare
