@@ -21,7 +21,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: refresh-lines  # shares the lines job's turn, so their saves never collide
+  group: save-results
   cancel-in-progress: false
 
 jobs:
