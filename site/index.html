@@ -84,7 +84,8 @@ a { color: var(--accent); text-underline-offset: 2px; }
   margin: 8px 0 0; font: 500 .74rem var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
 }
 .mast-side { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-body[data-view="ledger"] [data-for="lines"], body[data-view="lines"] [data-for="ledger"] { display: none !important; }
+body[data-view="ledger"] [data-for="lines"], body[data-view="lines"] [data-for="ledger"],
+body[data-view="edges"] [data-for="lines"], body[data-view="edges"] [data-for="ledger"] { display: none !important; }
 .status {
   display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px;
   font: 500 .76rem var(--font-data); border: 1px solid var(--rule-strong); border-radius: 999px; color: var(--ink);
@@ -243,6 +244,36 @@ select.input { padding-right: 6px; }
 .mv-path b { font-weight: 600; font-size: .86rem; }
 .mv-path li:last-child b { color: var(--accent); }
 .mv-path small { font-size: .64rem; color: var(--muted); white-space: nowrap; }
+/* edges */
+.esec { padding: 12px 14px; display: grid; gap: 10px; }
+.esec h3 { margin: 8px 0 0; font: 600 .7rem var(--font-data); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.lede { margin: 0; font-size: .86rem; color: var(--muted); max-width: 72ch; }
+.take { margin: 0; font-size: .9rem; max-width: 72ch; }
+.take:empty { display: none; }
+.escroll { overflow-x: auto; }
+.etable { width: 100%; max-width: 720px; border-collapse: collapse; font: 500 .86rem var(--font-data); font-variant-numeric: tabular-nums; }
+.etable th, .etable td { padding: 6px 8px; text-align: right; border-top: 1px solid var(--rule); white-space: nowrap; }
+.etable thead th { border-top: 0; font: 600 .62rem var(--font-data); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: normal; vertical-align: bottom; }
+.etable th:first-child { text-align: left; padding-left: 0; }
+.etable tbody th { font: 600 .86rem var(--font-body); }
+.etable tr.grp th { padding-top: 14px; font: 600 .66rem var(--font-data); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); border-top: 0; }
+.etable .sub { display: block; font: 400 .7rem var(--font-data); color: var(--muted); }
+.etable .muted, .etable td.muted { color: var(--muted); }
+.etable.grid td, .etable.grid thead th:not(:first-child) { text-align: center; }
+.mark { display: inline-block; width: 7px; height: 7px; margin-left: 4px; border-radius: 50%; vertical-align: 2px; background: var(--hi); box-shadow: 0 0 0 1px var(--hi-ink); }
+.mark.strong { background: var(--accent); box-shadow: none; }
+.read { font: 500 .7rem var(--font-data); color: var(--muted); }
+.read.watch { color: var(--ink); }
+.read.strong { color: var(--accent); font-weight: 600; }
+#edges-be .pos b { color: var(--accent); }
+#edges-be .neg b { color: var(--flag); }
+@media (max-width: 560px) {
+  .esec { padding: 12px; }
+  .etable { font-size: .8rem; }
+  .etable th, .etable td { padding: 6px 4px; }
+  .etable tbody th { font-size: .82rem; white-space: normal; }
+  .etable th:last-child, .etable td:last-child { padding-right: 0; }
+}
 .mv-markets p { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 0; font: 400 .74rem var(--font-data); color: var(--muted); }
 .mv-markets b { font-weight: 600; color: var(--ink); }
 
@@ -446,6 +477,7 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
   <nav class="tabs" aria-label="Sections">
     <a href="#lines" id="tab-lines">Lines</a>
     <a href="#ledger" id="tab-ledger">Ledger</a>
+    <a href="#edges" id="tab-edges">Edges</a>
   </nav>
 
   <p class="refresh-msg" id="refresh-msg" role="status" hidden></p>
@@ -591,17 +623,56 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
     <p class="fine">Your ledger is saved in a private GitHub repository, so only devices you've connected can see it. Changes from your phone and computer show up on both. Pending bets are graded from final scores each morning, Tuesday through Saturday (Saturday's games on Tuesday); bets you mark yourself are never changed. Each bet keeps when you placed it: Add to ledger stamps the time, and you can change it when you log or edit a bet. The same morning check saves each bet's closing line, the last line the site saw before kickoff at your book, so you can see whether you beat it.<span id="ledger-synced"></span></p>
   </main>
 
+  <!-- ===================== EDGES ===================== -->
+  <main class="view" id="view-edges" hidden>
+    <section class="sheet esec" aria-labelledby="be-title">
+      <div class="timing-head"><h2 id="be-title">Breaking even</h2><span class="mini">Your bets this season</span></div>
+      <div class="tally" id="edges-be"></div>
+      <p class="lede" id="edges-be-note">At −110 you need to win 52.4% of the bets that aren't pushes to break even.</p>
+      <div class="escroll" id="edges-mine"></div>
+    </section>
+
+    <div id="edges-report" hidden>
+      <section class="sheet esec" aria-labelledby="mv-title">
+        <div class="timing-head"><h2 id="mv-title">Line moves</h2><span class="mini" id="edges-range"></span></div>
+        <p class="lede">Betting the side a line moved toward, at the number on the first refresh that showed the move (when an alert would go off). A dot marks a record that's hard to get from a coin flip.</p>
+        <h3>Spreads</h3>
+        <div class="escroll" id="moves-spread"></div>
+        <p class="take" id="moves-headline"></p>
+        <h3>Totals</h3>
+        <div class="escroll" id="moves-total"></div>
+        <p class="take" id="moves-headline-total"></p>
+        <h3>From the open to the close</h3>
+        <p class="lede">The side the line ended up moving toward, bet at the opening number and at the closing number.</p>
+        <div class="escroll" id="oc-table"></div>
+      </section>
+
+      <section class="sheet esec" aria-labelledby="tr-title">
+        <div class="timing-head"><h2 id="tr-title">Against the close</h2><span class="mini">Every game, at the closing number</span></div>
+        <div class="escroll" id="trends-table"></div>
+      </section>
+
+      <section class="sheet esec" aria-labelledby="shop-title">
+        <div class="timing-head"><h2 id="shop-title">Line shopping</h2></div>
+        <p class="take" id="shop-text"></p>
+      </section>
+
+      <p class="fine">Everything is graded against final scores, at the better of FanDuel's and DraftKings' numbers for that side, ignoring the price. 52.4% breaks even at −110. <b>Read</b>: under 20 graded bets is too few to say anything; "Worth watching" is a record a coin flip gives less than 1 time in 5, "Unlikely luck" less than 1 time in 20. With this many rows a few will look good by chance, so trust the ones that keep holding up. Before Nov 21 lines didn't refresh on Saturdays, so Saturday closing lines then are Friday evening's; weather counts games since Nov 17, from the forecast in the six hours before kickoff. Updated each morning with the final scores.</p>
+    </div>
+  </main>
+
   <p class="fine" id="device-access" hidden>This device is connected to GitHub, so it can refresh lines and save bets. <button type="button" class="linkish" id="forget-token">Disconnect it</button></p>
   <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=12" defer></script>
-<script src="js/sample.js?v=12" defer></script>
-<script src="js/history.js?v=12" defer></script>
-<script src="js/ledger-core.js?v=12" defer></script>
-<script src="js/common.js?v=12" defer></script>
-<script src="js/ledger.js?v=12" defer></script>
-<script src="js/bigmoves.js?v=12" defer></script>
-<script src="js/board.js?v=12" defer></script>
+<script src="js/lines.js?v=13" defer></script>
+<script src="js/sample.js?v=13" defer></script>
+<script src="js/history.js?v=13" defer></script>
+<script src="js/ledger-core.js?v=13" defer></script>
+<script src="js/common.js?v=13" defer></script>
+<script src="js/ledger.js?v=13" defer></script>
+<script src="js/bigmoves.js?v=13" defer></script>
+<script src="js/edges.js?v=13" defer></script>
+<script src="js/board.js?v=13" defer></script>
 </body>
 </html>

@@ -140,9 +140,9 @@
   }
 
   // ---------- tabs ----------
-  var views = ["lines", "ledger"];
+  var views = ["lines", "ledger", "edges"];
   var viewListeners = [];
-  function currentView() { return location.hash === "#ledger" ? "ledger" : "lines"; }
+  function currentView() { return location.hash === "#ledger" ? "ledger" : location.hash === "#edges" ? "edges" : "lines"; }
   function showView() {
     var v = currentView();
     views.forEach(function (name) {

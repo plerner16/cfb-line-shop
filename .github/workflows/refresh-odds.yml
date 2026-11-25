@@ -79,19 +79,25 @@ jobs:
           CHECK_STADIUMS: ${{ github.event_name == 'push' }}
         run: node scripts/refresh-weather.mjs
 
+      - name: Update the Edges report
+        id: edges
+        continue-on-error: true  # a problem here never holds up the lines
+        run: node scripts/edges.mjs
+
       - name: Save the new lines, scores and weather
-        if: steps.fetch.outputs.changed == 'true' || steps.scores.outputs.changed == 'true' || steps.weather.outputs.changed == 'true' || steps.alerts.outputs.changed == 'true' || steps.marketalerts.outputs.changed == 'true'
+        if: steps.fetch.outputs.changed == 'true' || steps.scores.outputs.changed == 'true' || steps.weather.outputs.changed == 'true' || steps.alerts.outputs.changed == 'true' || steps.marketalerts.outputs.changed == 'true' || steps.edges.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/data/odds.json site/data/scores.json site/data/weather.json
           if [ -f site/data/history.json ]; then git add site/data/history.json; fi
           if [ -f state/line-alerts.json ]; then git add state/line-alerts.json; fi
-          for f in site/data/markets.json state/market-history.json state/market-alerts.json; do if [ -f "$f" ]; then git add "$f"; fi; done
+          for f in site/data/markets.json state/market-history.json state/market-alerts.json site/data/edges.json state/lines-archive.json state/weather-archive.json; do if [ -f "$f" ]; then git add "$f"; fi; done
           if [ "${{ steps.fetch.outputs.changed }}" = "true" ]; then msg="Refresh lines";
           elif [ "${{ steps.scores.outputs.changed }}" = "true" ]; then msg="Check final scores";
           elif [ "${{ steps.alerts.outputs.changed }}" = "true" ] || [ "${{ steps.marketalerts.outputs.changed }}" = "true" ]; then msg="Line alerts";
-          else msg="Refresh weather"; fi
+          elif [ "${{ steps.weather.outputs.changed }}" = "true" ]; then msg="Refresh weather";
+          else msg="Update the Edges report"; fi
           git commit -m "$msg" || exit 0
           for attempt in 1 2 3; do
             git pull --rebase --quiet origin main && git push --quiet origin HEAD:main && exit 0
@@ -102,7 +108,7 @@ jobs:
       - name: Decide whether to publish
         id: decide
         run: |
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ steps.fetch.outputs.changed }}" = "true" ] || [ "${{ steps.scores.outputs.changed }}" = "true" ] || [ "${{ steps.weather.outputs.changed }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ steps.fetch.outputs.changed }}" = "true" ] || [ "${{ steps.scores.outputs.changed }}" = "true" ] || [ "${{ steps.weather.outputs.changed }}" = "true" ] || [ "${{ steps.edges.outputs.changed }}" = "true" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"

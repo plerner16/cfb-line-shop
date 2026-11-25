@@ -2,12 +2,12 @@ name: Save final scores
 
 # Keeps a permanent record of final scores (state/results.json) for studying how line moves turned
 # out. Run it from the Actions tab with a date range to fill in past weeks; otherwise it saves the
-# last three days each Tuesday and Sunday morning.
+# last seven days every morning. The lines job rebuilds the Edges report from it within the hour.
 on:
   workflow_dispatch:
     inputs:
       from:
-        description: "First date (YYYY-MM-DD), blank for three days ago"
+        description: "First date (YYYY-MM-DD), blank for seven days ago"
         required: false
         default: ""
       to:
@@ -15,7 +15,7 @@ on:
         required: false
         default: ""
   schedule:
-    - cron: "23 13 * * 0,2"
+    - cron: "23 11 * * *"
 
 permissions:
   contents: write

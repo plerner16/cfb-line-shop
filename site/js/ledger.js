@@ -586,5 +586,5 @@
   }, POLL_MS);
 
   resetNewForm();
-  A.ledger = { add: add, explain: explain, load: load, bets: bets };
+  A.ledger = { add: add, explain: explain, load: load, bets: bets, vsClose: vsClose };
 })();

@@ -2,7 +2,7 @@
 // permanent record (scores.json only keeps two weeks). Used to study how line moves turned out.
 //
 //   node scripts/espn-results.mjs 2026-10-27 2026-11-23     (a range of dates, Central time)
-//   node scripts/espn-results.mjs                           (the last three days)
+//   node scripts/espn-results.mjs                           (the last seven days)
 //
 // No key needed. Games already saved as final are kept as they are.
 
@@ -64,7 +64,7 @@ export async function run({ file, from, to, fetchImpl = fetch }) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const today = new Date().toISOString().slice(0, 10);
-  const back = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+  const back = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   const changed = await run({
     file: fileURLToPath(new URL("../state/results.json", import.meta.url)),
     from: process.argv[2] || back,

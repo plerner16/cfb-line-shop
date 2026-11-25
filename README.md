@@ -70,6 +70,19 @@ The same request also pulls lines you don't bet: Pinnacle, BetOnline, Kalshi, Po
 
 Each is its own alert, sent once. A stale line alerts again if the gap grows another point, or if it closes and opens again later; a market move if the consensus goes another point. Spreads and totals only. What's been sent is kept in `state/market-alerts.json`. The thresholds are `STALE_POINTS` and `MIN_MARKETS` at the top of the script.
 
+## Edges
+
+The **Edges** tab shows what has and hasn't worked this season, to find anything that helps you get past break-even (52.4% at −110).
+
+- **Breaking even** and **your bets** are worked out in the browser from your private ledger, on connected devices only: the win rate your prices need against the one you've had, and your record, net and return by bet type, favorite or underdog, over or under, price, against the closing line, book and day.
+- **Line moves**: betting the side a spread or total moved toward, at the number on the first refresh that showed a move of 1 to 4+ points within one, two or three days (when an alert would go off), plus open-to-close moves.
+- **Against the close**: every game at its closing number: favorites and underdogs, home and road, spreads by size, overs and unders, and totals by wind and rain at kickoff.
+- **Line shopping**: how often FanDuel and DraftKings closed on different numbers, and how many results the better number changed.
+
+Everything is graded against final scores at the better of the two books' numbers for that side. Each row says whether its record could easily be luck (a coin flip would give it more than 1 time in 5), is worth watching, or is unlikely to be luck (under 1 time in 20).
+
+`scripts/edges.mjs` builds `site/data/edges.json` after each refresh, only rewriting it when a number changes. It keeps two permanent records, since the site's line history drops games after ten days: `state/lines-archive.json` (every game's line history, rebuilt back to Oct 28 from the saved copies of `odds.json`) and `state/weather-archive.json` (each game's last forecast in the six hours before kickoff, back to Nov 17). Final scores come from `state/results.json`, which `.github/workflows/save-results.yml` fills from ESPN's free public scoreboard each morning (the last seven days), or for any dates you give it from the Actions tab.
+
 ## The ledger
 
 Bets are saved in `bets.json` in the private repository `plerner16/cfb-bet-ledger`, one bet per line, so every connected device sees the same ledger and every change is in that repository's history. This repository (the site and the lines) stays public; it never holds your bets. A device that isn't connected sees the lines but not the ledger.
