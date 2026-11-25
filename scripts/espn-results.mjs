@@ -41,11 +41,12 @@ export function parseScoreboard(json) {
 export async function run({ file, from, to, fetchImpl = fetch }) {
   let saved = { games: {} };
   try { saved = JSON.parse(readFileSync(file, "utf8")); } catch { /* new file */ }
-  let added = 0, failed = 0;
+  let added = 0, failed = 0, said = false;
   for (const day of days(from, to)) {
     try {
       const res = await fetchImpl(`${URL_BASE}?dates=${day}&groups=80&limit=500`, { signal: AbortSignal.timeout(20000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!said) { said = true; console.log(`ESPN lets browsers read it: ${res.headers.get("access-control-allow-origin") || "no"}`); }
       const games = parseScoreboard(await res.json());
       for (const [id, g] of Object.entries(games)) if (!saved.games[id]) { saved.games[id] = g; added++; }
       console.log(`${day}: ${Object.keys(games).length} finals`);
