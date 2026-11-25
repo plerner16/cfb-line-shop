@@ -1,7 +1,7 @@
 {"startedAt":"2026-11-19T21:00:18.343Z",
 "sent":{"move:a750f21dccb9df459196adc8dcf5ffe4:total":66.5,
 "move:0a1027a4edb364b492a3fee67086e8bc:spread":-13.5,
-"move:b39108d2cfcd62d29954aee80bbf7b51:spread":14.5,
+"move:b39108d2cfcd62d29954aee80bbf7b51:spread":16,
 "move:6a08fbc3f2fce16533f36dccc4dce347:spread":-6.5,
 "move:bee4ea7a231be77b1ee52ddf3755592f:spread":25.5,
 "move:7ce20f289047e13b13c4a6517b10a4c2:spread":17.5,
@@ -19,4 +19,5 @@
 "move:59c0c40d83de9865c9f8da6344349353:total":58.5,
 "move:1f0a9e7f76830b196133518ae01bb113:spread":-0.5,
 "move:bee4ea7a231be77b1ee52ddf3755592f:total":66.5,
-"move:a57feac04a5d9404de66cd40c004fa51:total":48.5}}
+"move:a57feac04a5d9404de66cd40c004fa51:total":48.5,
+"stale:bee4ea7a231be77b1ee52ddf3755592f:spread:fanduel:home":1.5}}
