@@ -53,6 +53,12 @@ Press **Refresh** on the site to refresh right now (3 credits), or go to **Actio
 
 GitHub's own scheduler skips many runs when it's busy (it rarely ran this job in the morning), so a free timer at cron-job.org starts it at :05 every hour with `{"ref":"main","inputs":{"force":false}}`, which behaves like a scheduled run. GitHub's schedule stays on as a backup; extra runs do nothing extra.
 
+## Live now
+
+While games are on, the top of the Lines tab shows each one in progress: the score, quarter and clock, down and distance, who's covering the closing spread and by how much, the points so far against the closing total with the scoring pace, and on connected devices how each of your bets on it stands right now ("covering by 1½", "needs 3½ more"). Games that finished today are listed underneath, and the board's In progress tag shows the score too.
+
+The page reads ESPN's free public scoreboard straight from your browser (`site/js/live.js`): every minute while a game is on or about to start, every ten minutes otherwise, and not at all when the tab is in the background or you're on another tab. It uses no Odds API credits; live betting odds aren't pulled. Games are matched to the site's lines by team names and kickoff.
+
 ## Line alerts
 
 After each refresh, `scripts/line-alerts.mjs` checks the line history for big moves: a spread or total that moved more than 1 point in a day, 2 in two days, and so on up to 7 in a week, at either book (compared with that book's line then, or its first line if the game was posted since). Moneylines aren't checked. Each one is sent to your phone as its own alert through [ntfy](https://ntfy.sh), a free notification app (up to 20 a refresh; any more go out on the next one), and tapping it opens the game on the site with its line moves showing. A game and market alerts again only after the line moves at least another point. The same moves are listed under **Big moves** at the top of the Lines tab, and the board marks those games with a **Big move** tag. **Got it** marks one seen: it drops to the seen list and its tag goes quiet until the line moves another point. What's been seen is saved as `seen.json` in the private ledger repository, so it's the same on every connected device (a device that isn't connected keeps its own).

@@ -68,6 +68,16 @@
     seenListeners.forEach(function (fn) { fn(seenMoves); });
   }
 
+  // ---------- live scores ----------
+  // Kept by live.js: { gameId: { detail, a, h } } for games in progress, for the board's In progress tag.
+  var live = {};
+  var liveListeners = [];
+  function setLive(map) {
+    var before = JSON.stringify(live);
+    live = map || {};
+    if (JSON.stringify(live) !== before) liveListeners.forEach(function (fn) { fn(live); });
+  }
+
   // ---------- GitHub ----------
   function token() { return (store.get("ls.ghToken") || "").trim(); }
   function gh(method, url, tok, body) {
@@ -177,6 +187,7 @@
     onBooks: function (fn) { bookListeners.push(fn); },
     history: function () { return history; }, setHistory: setHistory, onHistory: function (fn) { historyListeners.push(fn); },
     seenMoves: function () { return seenMoves; }, setSeenMoves: setSeenMoves, onSeen: function (fn) { seenListeners.push(fn); },
+    liveFor: function (id) { return live[id] || null; }, setLive: setLive, onLive: function (fn) { liveListeners.push(fn); },
     token: token, gh: gh, tokenProblem: tokenProblem,
     openConnect: openConnect, closeConnect: closeConnect, onDevice: function (fn) { deviceListeners.push(fn); },
     currentView: currentView, onView: function (fn) { viewListeners.push(fn); }

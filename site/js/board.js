@@ -139,6 +139,7 @@
   window.addEventListener("hashchange", function () { readLink(); openLinkedGame(); });
   A.showGame = showGame;
   A.onSeen(function () { if (state.source === "live") renderKeepingFocus(); });
+  A.onLive(function () { if (state.source === "live" && state.games.some(function (it) { return it.g.live; })) renderKeepingFocus(); });
 
   var inflight = null;
   // Resolves once the newest odds.json has been read (or the read failed).
@@ -662,7 +663,8 @@
   function gameHtml(item, showDay) {
     var g = item.g, a = item.a, chips = [];
     if (state.source === "sample") chips.push('<span class="chip">Sample</span>');
-    if (g.live) chips.push('<span class="chip live">In progress</span>');
+    var lv = g.live && A.liveFor ? A.liveFor(g.id) : null;
+    if (g.live) chips.push('<span class="chip live">' + (lv ? esc(lv.detail + " · " + lv.a + "–" + lv.h) : "In progress") + "</span>");
     if (a.only) chips.push('<span class="chip">' + esc(A.bookName(a.only)) + " only</span>");
     var mids = a.opps.filter(function (o) { return o.type === "middle"; }).length;
     if (a.opps.length - mids) chips.push('<span class="chip flag">Arb</span>');

@@ -206,6 +206,31 @@ select.input { padding-right: 6px; }
 .chip.big { color: var(--hi-ink); border-color: var(--hi); background: var(--hi); }
 .chip.big.seen { color: var(--muted); border-color: var(--rule-strong); background: transparent; }
 
+/* live now */
+.live { padding: 12px 14px; display: grid; gap: 8px; }
+.live-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
+.lg { display: grid; grid-template-columns: minmax(118px, auto) 1fr; gap: 4px 14px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); }
+.lg.done { opacity: .9; }
+.lg-score { display: grid; gap: 3px; align-content: start; }
+.lg-team { display: flex; justify-content: space-between; gap: 10px; font: 600 .95rem var(--font-body); }
+.lg-team b { font: 700 1.05rem var(--font-data); font-variant-numeric: tabular-nums; }
+.lg-team.poss span::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--accent); vertical-align: 2px; }
+.lg-info { display: grid; gap: 2px; align-content: start; min-width: 0; font: 400 .76rem var(--font-data); color: var(--muted); }
+.lg-clock { font: 600 .8rem var(--font-data); color: var(--accent); }
+.lg.done .lg-clock { color: var(--ink); }
+.lg-down { display: block; font-weight: 400; color: var(--muted); }
+.lg-down.rz { color: var(--flag); font-weight: 600; }
+.lg-bets { list-style: none; margin: 4px 0 0; padding: 4px 0 0; border-top: 1px dashed var(--rule); display: grid; gap: 2px; color: var(--ink); }
+.lg-bets .pos { color: var(--accent); font-weight: 600; }
+.lg-bets .neg { color: var(--flag); font-weight: 600; }
+.lb-pick { font-weight: 600; }
+.lg-link { grid-column: 1 / -1; justify-self: end; font: 600 .62rem var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.live .bm-old .live-list { margin-top: 6px; }
+@media (max-width: 560px) {
+  .live { padding: 12px; }
+  .live-list { grid-template-columns: 1fr; }
+}
+
 /* big moves list */
 .bigmoves { padding: 12px 14px; display: grid; gap: 8px; scroll-margin-top: 12px; }
 .bm-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
@@ -512,6 +537,16 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
     <div class="tally" id="tally" aria-live="polite"></div>
 
+    <section class="live sheet" id="live" hidden aria-labelledby="live-title">
+      <div class="bm-head">
+        <h2 id="live-title">Live now</h2>
+        <span class="mini" id="live-meta"></span>
+      </div>
+      <ul class="live-list" id="live-list"></ul>
+      <details class="bm-old" id="live-done" hidden><summary class="mini" id="live-done-count"></summary><ul class="live-list" id="live-done-list"></ul></details>
+      <p class="fine" id="live-note"></p>
+    </section>
+
     <section class="bigmoves sheet" id="bigmoves" hidden aria-labelledby="bm-title">
       <div class="bm-head">
         <h2 id="bm-title">Big moves</h2>
@@ -665,14 +700,15 @@ table.board { width: 100%; border-collapse: collapse; table-layout: fixed; }
   <p class="fine" id="device-none" hidden>This device can view the lines. <button type="button" class="linkish" id="connect-device">Connect it to GitHub</button> to see your ledger, save bets and refresh lines.</p>
 </div>
 
-<script src="js/lines.js?v=13" defer></script>
-<script src="js/sample.js?v=13" defer></script>
-<script src="js/history.js?v=13" defer></script>
-<script src="js/ledger-core.js?v=13" defer></script>
-<script src="js/common.js?v=13" defer></script>
-<script src="js/ledger.js?v=13" defer></script>
-<script src="js/bigmoves.js?v=13" defer></script>
-<script src="js/edges.js?v=13" defer></script>
-<script src="js/board.js?v=13" defer></script>
+<script src="js/lines.js?v=14" defer></script>
+<script src="js/sample.js?v=14" defer></script>
+<script src="js/history.js?v=14" defer></script>
+<script src="js/ledger-core.js?v=14" defer></script>
+<script src="js/common.js?v=14" defer></script>
+<script src="js/ledger.js?v=14" defer></script>
+<script src="js/bigmoves.js?v=14" defer></script>
+<script src="js/live.js?v=14" defer></script>
+<script src="js/edges.js?v=14" defer></script>
+<script src="js/board.js?v=14" defer></script>
 </body>
 </html>
