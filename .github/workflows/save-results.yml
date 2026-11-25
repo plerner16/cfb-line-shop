@@ -1,0 +1,49 @@
+name: Save final scores
+
+# Keeps a permanent record of final scores (state/results.json) for studying how line moves turned
+# out. Run it from the Actions tab with a date range to fill in past weeks; otherwise it saves the
+# last three days each Tuesday and Sunday morning.
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "First date (YYYY-MM-DD), blank for three days ago"
+        required: false
+        default: ""
+      to:
+        description: "Last date (YYYY-MM-DD), blank for today"
+        required: false
+        default: ""
+  schedule:
+    - cron: "23 13 * * 0,2"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-lines  # shares the lines job's turn, so their saves never collide
+  cancel-in-progress: false
+
+jobs:
+  save:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Save final scores
+        id: save
+        run: node scripts/espn-results.mjs "${{ inputs.from }}" "${{ inputs.to }}"
+      - name: Commit
+        if: steps.save.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/results.json
+          git commit -q -m "Save final scores"
+          for attempt in 1 2 3; do
+            git pull -q --rebase origin main && git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
