@@ -88,7 +88,7 @@
 "6474599b7377102869153e25af140533:spread:draftkings":14,
 "8fc8552ec633bb09ca2bcb9b15cb6896:spread:fanduel":4.5,
 "bee4ea7a231be77b1ee52ddf3755592f:spread:fanduel":24.5,
-"bee4ea7a231be77b1ee52ddf3755592f:spread:draftkings":25.5,
+"bee4ea7a231be77b1ee52ddf3755592f:spread:draftkings":26.5,
 "e55fde0bfbebc4cfd4ccc010b0e858b4:spread:fanduel":-7.5,
 "0a1027a4edb364b492a3fee67086e8bc:spread:fanduel":-13.5,
 "0a1027a4edb364b492a3fee67086e8bc:spread:draftkings":-13.5,
@@ -115,7 +115,7 @@
 "7ce20f289047e13b13c4a6517b10a4c2:total:draftkings":54.5,
 "a82769fe54a0f8c714667b8720b67449:spread:fanduel":4.5,
 "a82769fe54a0f8c714667b8720b67449:spread:draftkings":4.5,
-"e0b30f1dada22d4a2565ce663bc0741a:total:draftkings":48.5,
+"e0b30f1dada22d4a2565ce663bc0741a:total:draftkings":47.5,
 "c074c1d28d172e0eb521dbb9d530462f:total:fanduel":49.5,
 "c074c1d28d172e0eb521dbb9d530462f:total:draftkings":50.5,
 "a0fe49c990d1497e1cb34eb9c2b73ef1:spread:fanduel":-17.5,
@@ -128,4 +128,5 @@
 "59c0c40d83de9865c9f8da6344349353:total:draftkings":58.5,
 "bee4ea7a231be77b1ee52ddf3755592f:total:draftkings":66.5,
 "a57feac04a5d9404de66cd40c004fa51:total:draftkings":48.5,
-"bee4ea7a231be77b1ee52ddf3755592f:total:fanduel":66.5}}
+"bee4ea7a231be77b1ee52ddf3755592f:total:fanduel":66.5,
+"559227d3ba70769111dd09490258af44:total:fanduel":46.5}}
