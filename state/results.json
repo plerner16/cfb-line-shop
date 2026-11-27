@@ -256,5 +256,7 @@
 "401860919":{"start":"2026-11-22T03:30Z","away":"Utah State Aggies","home":"Oregon State Beavers","awayScore":24,"homeScore":31,"neutral":false},
 "401864541":{"start":"2026-11-22T03:30Z","away":"Hawai'i Rainbow Warriors","home":"Nevada Wolf Pack","awayScore":8,"homeScore":16,"neutral":false},
 "401866470":{"start":"2026-11-25T00:00Z","away":"Kent State Golden Flashes","home":"Eastern Michigan Eagles","awayScore":12,"homeScore":17,"neutral":false},
-"401866471":{"start":"2026-11-25T00:00Z","away":"Miami (OH) RedHawks","home":"Western Michigan Broncos","awayScore":28,"homeScore":24,"neutral":false}
+"401866471":{"start":"2026-11-25T00:00Z","away":"Miami (OH) RedHawks","home":"Western Michigan Broncos","awayScore":28,"homeScore":24,"neutral":false},
+"401856879":{"start":"2026-11-27T01:00Z","away":"TCU Horned Frogs","home":"Texas Tech Red Raiders","awayScore":27,"homeScore":48,"neutral":false},
+"401866472":{"start":"2026-11-27T17:00Z","away":"Buffalo Bulls","home":"Akron Zips","awayScore":17,"homeScore":9,"neutral":false}
 }}
