@@ -75,9 +75,9 @@
 "8fc8552ec633bb09ca2bcb9b15cb6896":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":38,"wind":12,"gust":19,"precip":0,"sky":"cloudy","snow":false},
 "58cd1284193cd30679325c8494f546e6":{"start":"2026-11-27T17:01:00.000Z","roof":"open","temp":37,"wind":13,"gust":29,"precip":14,"sky":"drizzle","snow":false},
 "e0b30f1dada22d4a2565ce663bc0741a":{"start":"2026-11-27T17:01:00.000Z","roof":"open","temp":35,"wind":11,"gust":24,"precip":45,"sky":"snow","snow":true},
-"a72c11afb95ca2c2eb057c7f2a8e376b":{"start":"2026-11-27T20:00:00.000Z","roof":"open","temp":56,"wind":9,"gust":17,"precip":0,"sky":"cloudy","snow":false},
-"5fc40a6a68f1652a38d2844a90358df2":{"start":"2026-11-27T20:30:00.000Z","roof":"open","temp":59,"wind":4,"gust":7,"precip":0,"sky":"cloudy","snow":false},
-"6a08fbc3f2fce16533f36dccc4dce347":{"start":"2026-11-27T20:30:00.000Z","roof":"open","temp":59,"wind":9,"gust":16,"precip":0,"sky":"cloudy","snow":false},
-"a750f21dccb9df459196adc8dcf5ffe4":{"start":"2026-11-27T20:30:00.000Z","roof":"open","temp":48,"wind":8,"gust":17,"precip":0,"sky":"cloudy","snow":false},
-"45d4d87e236a38e2feb11f57820ff03f":{"start":"2026-11-27T21:30:00.000Z","roof":"open","temp":60,"wind":13,"gust":20,"precip":0,"sky":"cloudy","snow":false}
+"a72c11afb95ca2c2eb057c7f2a8e376b":{"start":"2026-11-27T20:00:00.000Z","roof":"open","temp":56,"wind":8,"gust":17,"precip":0,"sky":"cloudy","snow":false},
+"5fc40a6a68f1652a38d2844a90358df2":{"start":"2026-11-27T20:30:00.000Z","roof":"open","temp":58,"wind":3,"gust":7,"precip":0,"sky":"cloudy","snow":false},
+"6a08fbc3f2fce16533f36dccc4dce347":{"start":"2026-11-27T20:30:00.000Z","roof":"open","temp":59,"wind":10,"gust":17,"precip":0,"sky":"cloudy","snow":false},
+"a750f21dccb9df459196adc8dcf5ffe4":{"start":"2026-11-27T20:30:00.000Z","roof":"open","temp":49,"wind":8,"gust":17,"precip":0,"sky":"partly","snow":false},
+"45d4d87e236a38e2feb11f57820ff03f":{"start":"2026-11-27T21:30:00.000Z","roof":"open","temp":61,"wind":13,"gust":21,"precip":0,"sky":"cloudy","snow":false}
 }}
