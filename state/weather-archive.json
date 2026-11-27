@@ -72,7 +72,7 @@
 "a82769fe54a0f8c714667b8720b67449":{"start":"2026-11-25T00:00:00.000Z","roof":"open","temp":32,"wind":5,"gust":10,"precip":0,"sky":"cloudy","snow":false},
 "b39108d2cfcd62d29954aee80bbf7b51":{"start":"2026-11-27T01:00:00.000Z","roof":"open","temp":45,"wind":6,"gust":13,"precip":0,"sky":"clear","snow":false},
 "58cd1284193cd30679325c8494f546e6":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":38,"wind":14,"gust":29,"precip":15,"sky":"cloudy","snow":false},
-"5b00e6b226dce4274d819d5d1818e703":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":44,"wind":12,"gust":24,"precip":0,"sky":"clear","snow":false},
-"8fc8552ec633bb09ca2bcb9b15cb6896":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":38,"wind":12,"gust":21,"precip":0,"sky":"cloudy","snow":false},
-"e0b30f1dada22d4a2565ce663bc0741a":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":37,"wind":11,"gust":24,"precip":73,"sky":"cloudy","snow":false}
+"5b00e6b226dce4274d819d5d1818e703":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":45,"wind":12,"gust":23,"precip":0,"sky":"clear","snow":false},
+"8fc8552ec633bb09ca2bcb9b15cb6896":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":39,"wind":11,"gust":18,"precip":0,"sky":"cloudy","snow":false},
+"e0b30f1dada22d4a2565ce663bc0741a":{"start":"2026-11-27T17:00:00.000Z","roof":"open","temp":36,"wind":11,"gust":26,"precip":73,"sky":"snow","snow":true}
 }}
