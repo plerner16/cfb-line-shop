@@ -1,7 +1,5 @@
 {"startedAt":"2026-11-19T21:00:18.343Z",
-"sent":{"move:a750f21dccb9df459196adc8dcf5ffe4:total":66.5,
-"move:0a1027a4edb364b492a3fee67086e8bc:spread":-13.5,
-"move:6a08fbc3f2fce16533f36dccc4dce347:spread":-6.5,
+"sent":{"move:0a1027a4edb364b492a3fee67086e8bc:spread":-13.5,
 "move:bee4ea7a231be77b1ee52ddf3755592f:spread":25.5,
 "move:7ce20f289047e13b13c4a6517b10a4c2:spread":17.5,
 "move:a0fe49c990d1497e1cb34eb9c2b73ef1:total":53,
@@ -17,6 +15,4 @@
 "move:bee4ea7a231be77b1ee52ddf3755592f:total":65.5,
 "move:a57feac04a5d9404de66cd40c004fa51:total":48.5,
 "move:ab91c66dfce2e452eb546cde1cf61879:spread":-4.5,
-"move:5fc40a6a68f1652a38d2844a90358df2:total":41,
-"move:a750f21dccb9df459196adc8dcf5ffe4:spread":19.5,
 "move:e6a3c909a8cfc7b2c666252e246418c7:spread":9.5}}
